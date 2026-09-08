@@ -1,0 +1,29 @@
+{
+  "name": "refer",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.2",
+  "scripts": {
+    "build": "pnpm --filter @refer/extension build",
+    "build:firefox": "pnpm --filter @refer/extension build:firefox",
+    "build:web": "pnpm --filter @refer/web build",
+    "zip": "pnpm --filter @refer/extension zip",
+    "zip:firefox": "pnpm --filter @refer/extension zip:firefox",
+    "dev": "pnpm --filter @refer/extension dev",
+    "dev:firefox": "pnpm --filter @refer/extension dev:firefox",
+    "dev:web": "pnpm --filter @refer/web dev",
+    "prepare": "pnpm --filter @refer/extension prepare",
+    "package:extensions": "node scripts/verify-extension-packages.mjs",
+    "smoke:extension": "node scripts/smoke-extension.mjs",
+    "smoke:cloud": "node scripts/smoke-cloud.mjs",
+    "smoke:firefox": "node scripts/smoke-firefox.mjs",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.116.0",
+    "fflate": "0.8.3",
+    "playwright": "1.63.0",
+    "web-ext": "10.6.0"
+  }
+}

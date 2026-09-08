@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f5f4ef" />
+    <title>Refer — Library</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#library-content">Skip to references</a>
+
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="Refer library">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M8 7.5h9.2a6.3 6.3 0 0 1 0 12.6H8V7.5Z" />
+          <path d="m16.4 20.1 7.6 6.4" />
+        </svg>
+        <span>Refer</span>
+      </a>
+      <div class="header-actions">
+        <p class="library-count" id="library-count">Loading library…</p>
+        <button class="account-button" id="account-button" type="button" aria-haspopup="dialog" aria-expanded="false">
+          <span class="account-dot" aria-hidden="true"></span>
+          <span id="account-button-label">On this device</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="library-content" tabindex="-1">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">Personal design archive</p>
+        <h1 id="page-title">Things worth remembering.</h1>
+        <p class="intro-copy">Typography, components, and small decisions saved from the web.</p>
+      </section>
+
+      <section class="library" aria-labelledby="references-heading">
+        <h2 class="visually-hidden" id="references-heading">Saved references</h2>
+        <div class="toolbar">
+          <label class="search">
+            <span class="visually-hidden">Search references</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="8.75" cy="8.75" r="5.25" />
+              <path d="m12.6 12.6 3.9 3.9" />
+            </svg>
+            <input id="search" type="search" name="search" placeholder="Search references" autocomplete="off" />
+          </label>
+
+          <div class="filters" role="group" aria-label="Filter references">
+            <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">All</button>
+            <button class="filter" type="button" data-filter="typography" aria-pressed="false">Typography</button>
+            <button class="filter" type="button" data-filter="component" aria-pressed="false">Components</button>
+          </div>
+        </div>
+
+        <div class="result-summary" id="result-summary" role="status" aria-live="polite"></div>
+        <div class="reference-grid" id="reference-grid" aria-busy="true"></div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <div class="empty-glyph" aria-hidden="true">
+            <span>Aa</span>
+          </div>
+          <h2 id="empty-title">No references yet</h2>
+          <p id="empty-copy">Start the inspector on any page, then select an element you want to remember.</p>
+          <button class="text-button" id="clear-filters" type="button" hidden>Clear search and filters</button>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title">
+      <div class="detail-shell">
+        <button class="icon-button detail-close" type="button" data-close-detail aria-label="Close reference details">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
+        </button>
+        <div id="detail-content"></div>
+      </div>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-copy">
+      <form method="dialog">
+        <p class="eyebrow">Remove from library</p>
+        <h2 id="confirm-title">Delete this reference?</h2>
+        <p id="confirm-copy">You can undo this action until you dismiss the message.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel">Cancel</button>
+          <button class="button button-danger" id="confirm-delete" value="delete">Delete reference</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="account-dialog" id="account-dialog" aria-labelledby="account-title">
+      <div class="account-shell">
+        <button class="icon-button account-close" id="account-close" type="button" aria-label="Close account settings">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
+        </button>
+        <p class="eyebrow">Cloud sync</p>
+        <h2 id="account-title">Keep your references with you.</h2>
+        <p class="account-copy" id="account-copy">Checking cloud availability…</p>
+
+        <form class="sign-in-form" id="sign-in-form" hidden>
+          <label>
+            <span>Email</span>
+            <input id="account-email" type="email" autocomplete="username" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="account-password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="button button-primary" id="sign-in-button" type="submit">Sign in</button>
+        </form>
+
+        <div class="signed-in-panel" id="signed-in-panel" hidden>
+          <p class="signed-in-email" id="signed-in-email"></p>
+          <p class="sync-detail" id="sync-detail"></p>
+          <div class="dialog-actions">
+            <button class="button button-primary" id="sync-now" type="button">Sync now</button>
+            <button class="button button-secondary" id="sign-out" type="button">Sign out</button>
+          </div>
+        </div>
+        <p class="account-feedback" id="account-feedback" role="status" aria-live="polite"></p>
+      </div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <span id="toast-message">Reference deleted.</span>
+      <button class="toast-action" id="undo-delete" type="button">Undo</button>
+      <button class="toast-close" id="dismiss-toast" type="button" aria-label="Dismiss message">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg>
+      </button>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

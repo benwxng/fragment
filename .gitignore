@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.output/
+.wxt/
+dist/
+coverage/
+*.tsbuildinfo
+output/
+.playwright-cli/
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example

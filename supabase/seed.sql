@@ -1,0 +1,2 @@
+-- Intentionally empty. Create local Auth users through Studio or test helpers so
+-- the profile lifecycle trigger follows the same path as production.

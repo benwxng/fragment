@@ -1,0 +1,28 @@
+{
+  "name": "@refer/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wxt build -b chrome",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip -b chrome",
+    "zip:firefox": "wxt zip -b firefox",
+    "dev": "wxt -b chrome",
+    "dev:firefox": "wxt -b firefox",
+    "prepare": "wxt prepare",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@refer/capture": "workspace:*",
+    "@refer/database": "workspace:^",
+    "@supabase/supabase-js": "2.116.0"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "wxt": "^0.21.4"
+  }
+}
