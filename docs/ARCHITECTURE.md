@@ -103,8 +103,8 @@ request persistent `<all_urls>` access for the MVP.
    inspection stays active for rapid collection.
 5. A non-blocking **Saved** toast offers **Undo** and **View reference**.
 6. `Escape` exits. Keyboard inspection uses Tab to choose page controls and a shortcut
-   to capture the focused element. `Option/Alt + Up` selects the parent,
-   `Option/Alt + Down` returns toward the prior child, `Space` pins the inspector card,
+   to capture the focused element. `↑` selects the parent,
+   `↓` returns toward the prior child, `Space` pins the inspector card,
    and `Enter` saves the current target.
 
 The interaction must never leave event handlers, overlays, modified cursor styles, or

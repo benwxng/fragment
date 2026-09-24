@@ -129,6 +129,7 @@ export const inspectorStyles = String.raw`
 
   .hud {
     position: fixed;
+    inset: 0 auto auto 0;
     z-index: 1;
     inline-size: min(288px, calc(100vw - 24px));
     max-block-size: calc(100vh - 24px);
@@ -317,6 +318,11 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: no-preference) {
+    /* Retarget from the current visual position as the inspected element changes. */
+    .hud {
+      transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
     button:active {
       scale: 0.96;
     }
@@ -329,6 +335,10 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .hud {
+      transition: none;
+    }
+
     *,
     *::before,
     *::after {

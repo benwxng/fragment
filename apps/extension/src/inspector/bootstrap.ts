@@ -99,14 +99,14 @@ function createUi(shadow: ShadowRoot): HudElements {
 
   const hud = element('section', 'hud');
   hud.hidden = true;
-  hud.setAttribute('aria-label', 'Design properties');
+  hud.setAttribute('aria-label', 'Inspector Panel');
   const hudHead = element('div', 'hud-head');
   const elementName = element('div', 'element-name');
   const dimensions = element('div', 'dimensions');
   hudHead.append(elementName, dimensions);
   const sections = element('div', 'sections');
   const hint = element('div', 'hint');
-  hint.innerHTML = '<kbd>Enter</kbd> save · <kbd>Alt ↑↓</kbd> traverse · <kbd>Esc</kbd> exit';
+  hint.innerHTML = '<kbd>Enter</kbd> save · <kbd>↑↓</kbd> traverse · <kbd>Esc</kbd> exit';
   hud.append(hudHead, sections, hint);
 
   const toast = element('div', 'toast');
@@ -340,13 +340,6 @@ function positionOverlay(
   const visibleRight = clamp(rect.right, 0, window.innerWidth);
   const visibleBottom = clamp(rect.bottom, 0, window.innerHeight);
 
-  ui.highlight.hidden = false;
-  Object.assign(ui.highlight.style, {
-    transform: `translate3d(${visibleLeft}px, ${visibleTop}px, 0)`,
-    width: `${Math.max(0, visibleRight - visibleLeft)}px`,
-    height: `${Math.max(0, visibleBottom - visibleTop)}px`,
-  });
-
   ui.hud.hidden = false;
   const chipRect = ui.chip.getBoundingClientRect();
   const minimumTop = Math.max(VIEWPORT_INSET, Math.ceil(chipRect.bottom + VIEWPORT_INSET));
@@ -384,7 +377,14 @@ function positionOverlay(
     top = clamp(top, minimumTop, maxTop);
   }
 
-  ui.hud.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+  // Read panel geometry before updating the outline to avoid another layout flush.
+  ui.highlight.hidden = false;
+  Object.assign(ui.highlight.style, {
+    transform: `translate3d(${visibleLeft}px, ${visibleTop}px, 0)`,
+    width: `${Math.max(0, visibleRight - visibleLeft)}px`,
+    height: `${Math.max(0, visibleBottom - visibleTop)}px`,
+  });
+  ui.hud.style.transform = `translate3d(${left}px, ${top}px, 0)`;
 }
 
 function parentElement(target: Element): Element | null {
@@ -460,6 +460,7 @@ export function bootstrapInspector(): void {
   let saving = false;
   let target: Element | null = null;
   let frame = 0;
+  let geometryFrame = 0;
   let pendingPoint = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   let lastPointer = pendingPoint;
   let lastSavedId: string | null = null;
@@ -572,6 +573,7 @@ export function bootstrapInspector(): void {
     if (!active) return;
     active = false;
     if (frame) cancelAnimationFrame(frame);
+    if (geometryFrame) cancelAnimationFrame(geometryFrame);
     for (const dispose of cleanups.splice(0)) dispose();
     restoreCursor();
     host.remove();
@@ -622,22 +624,23 @@ export function bootstrapInspector(): void {
 
     if (isOverlayEvent(event)) return;
 
-    if (event.altKey && event.key === 'ArrowUp' && target) {
+    const plainArrow = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+    if (plainArrow && event.key === 'ArrowUp' && target) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
       const parent = parentElement(target);
       if (parent) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
         childTrail.set(parent, target);
         setTarget(parent);
       }
       return;
     }
 
-    if (event.altKey && event.key === 'ArrowDown' && target) {
+    if (plainArrow && event.key === 'ArrowDown' && target) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
       const child = childTrail.get(target);
       if (child?.isConnected) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
         setTarget(child);
       }
       return;
@@ -651,8 +654,12 @@ export function bootstrapInspector(): void {
   };
 
   const updateGeometry: EventListener = () => {
-    if (target?.isConnected) positionOverlay(ui, target, lastPointer);
-    else if (target) setTarget(null);
+    if (geometryFrame) return;
+    geometryFrame = requestAnimationFrame(() => {
+      geometryFrame = 0;
+      if (target?.isConnected) positionOverlay(ui, target, lastPointer);
+      else if (target) setTarget(null);
+    });
   };
 
   listen(window, 'pointermove', handlePointerMove, { capture: true, passive: true });

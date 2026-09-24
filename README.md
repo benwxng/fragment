@@ -55,7 +55,7 @@ and select `apps/extension/.output/firefox-mv3/manifest.json`.
 3. Click the highlighted element or press Enter to save it.
 4. Use **View references** in the confirmation, or open the extension's library from
    its command/action menu.
-5. Press Escape to leave inspection mode. `Alt+Up` and `Alt+Down` traverse the DOM.
+5. Press Escape to leave inspection mode. `↑` selects the parent element; `↓` returns to the previous child.
 
 Refer deliberately requests no persistent access to every website. Activation grants
 temporary access only to the active tab. Saved URLs have query strings and fragments
