@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   getSyncQueueSummary: vi.fn(),
   listReadySyncJobs: vi.fn(),
   getSession: vi.fn(),
-  signInWithPassword: vi.fn(),
+  signIn: vi.fn(),
   signOut: vi.fn(),
   from: vi.fn(),
   storageFrom: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('./client', () => ({
   getCloudClient: () => ({
     auth: {
       getSession: mocks.getSession,
-      signInWithPassword: mocks.signInWithPassword,
+      signIn: mocks.signIn,
       signOut: mocks.signOut,
     },
     from: mocks.from,
@@ -72,7 +72,7 @@ describe('cloud sync account ownership', () => {
   });
 
   it('signs a different account back out before any reference can upload', async () => {
-    mocks.signInWithPassword.mockResolvedValue({
+    mocks.signIn.mockResolvedValue({
       data: { user: { id: 'user-b' } },
       error: null,
     });
@@ -82,7 +82,7 @@ describe('cloud sync account ownership', () => {
       queued: 0,
     });
 
-    await expect(signIn('other@example.com', 'password')).rejects.toThrow(
+    await expect(signIn()).rejects.toThrow(
       /already linked to another account/u,
     );
 
@@ -107,6 +107,7 @@ describe('cloud sync account ownership', () => {
     const state = await syncNow(true);
 
     expect(state.lastError).toMatch(/already linked to another account/u);
+    expect(mocks.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(clearAlarm).toHaveBeenCalledWith('refer-cloud-sync');
     expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.storageFrom).not.toHaveBeenCalled();

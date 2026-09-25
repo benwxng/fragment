@@ -5,19 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f5f4ef" />
-    <title>Refer — Library</title>
+    <title>Glace — Library</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <a class="skip-link" href="#library-content">Skip to references</a>
 
     <header class="site-header">
-      <a class="brand" href="./index.html" aria-label="Refer library">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M8 7.5h9.2a6.3 6.3 0 0 1 0 12.6H8V7.5Z" />
-          <path d="m16.4 20.1 7.6 6.4" />
-        </svg>
-        <span>Refer</span>
+      <a class="brand" href="./index.html" aria-label="Glace library">
+        <img class="brand-mark" src="/glace-eye.svg" width="64" height="27" alt="" />
       </a>
       <div class="header-actions">
         <p class="library-count" id="library-count">Loading library…</p>
@@ -99,15 +95,8 @@
         <p class="account-copy" id="account-copy">Checking cloud availability…</p>
 
         <form class="sign-in-form" id="sign-in-form" hidden>
-          <label>
-            <span>Email</span>
-            <input id="account-email" type="email" autocomplete="username" required />
-          </label>
-          <label>
-            <span>Password</span>
-            <input id="account-password" type="password" autocomplete="current-password" required />
-          </label>
-          <button class="button button-primary" id="sign-in-button" type="submit">Sign in</button>
+          <button class="button button-primary" id="sign-in-button" type="submit">Connect your account</button>
+          <p>Sign in with Google or email in the web library.</p>
         </form>
 
         <div class="signed-in-panel" id="signed-in-panel" hidden>

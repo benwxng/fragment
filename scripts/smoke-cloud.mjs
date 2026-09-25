@@ -18,12 +18,18 @@ const authOptions = {
 };
 const admin = createClient(url, secretKey, { auth: authOptions });
 const client = createClient(url, publishableKey, { auth: authOptions });
+const secondClient = createClient(url, publishableKey, { auth: authOptions });
 const anonymous = createClient(url, publishableKey, { auth: authOptions });
 const email = `refer-smoke-${randomUUID()}@example.com`;
 const password = `${randomBytes(24).toString('base64url')}aA1!`;
+const secondEmail = `refer-smoke-${randomUUID()}@example.com`;
+const secondPassword = `${randomBytes(24).toString('base64url')}aA1!`;
 const captureId = randomUUID();
+const secondCaptureId = randomUUID();
 let userId;
+let secondUserId;
 let objectPath;
+let secondObjectPath;
 let smokePassed = false;
 
 try {
@@ -37,9 +43,25 @@ try {
   userId = created.user.id;
   objectPath = `${userId}/${captureId}.png`;
 
+  const { data: secondCreated, error: secondCreateError } = await admin.auth.admin.createUser({
+    email: secondEmail,
+    password: secondPassword,
+    email_confirm: true,
+  });
+  assert.ifError(secondCreateError);
+  assert(secondCreated.user?.id, 'Supabase did not return the second disposable user.');
+  secondUserId = secondCreated.user.id;
+  secondObjectPath = `${secondUserId}/${secondCaptureId}.png`;
+
   const { data: signedIn, error: signInError } = await client.auth.signInWithPassword({ email, password });
   assert.ifError(signInError);
   assert.equal(signedIn.user?.id, userId);
+  const { data: secondSignedIn, error: secondSignInError } = await secondClient.auth.signInWithPassword({
+    email: secondEmail,
+    password: secondPassword,
+  });
+  assert.ifError(secondSignInError);
+  assert.equal(secondSignedIn.user?.id, secondUserId);
 
   const png = Uint8Array.from(Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -79,6 +101,50 @@ try {
   assert.ifError(ownReadError);
   assert.deepEqual(ownRows, [{ id: captureId, user_id: userId, screenshot_path: objectPath }]);
 
+  const { data: hiddenFromSecond, error: secondReadError } = await secondClient
+    .from('captures')
+    .select('id')
+    .eq('id', captureId);
+  assert.ifError(secondReadError);
+  assert.deepEqual(hiddenFromSecond, [], 'A second authenticated user could read the first user’s capture.');
+
+  const { data: crossOwnerUpdate, error: crossOwnerUpdateError } = await secondClient
+    .from('captures')
+    .update({ page_title: 'Cross-owner update' })
+    .eq('id', captureId)
+    .select('id');
+  assert.ifError(crossOwnerUpdateError);
+  assert.deepEqual(crossOwnerUpdate, [], 'A second authenticated user could update the first user’s capture.');
+
+  const { error: secondUploadError } = await secondClient.storage
+    .from('reference-shots')
+    .upload(secondObjectPath, png, { contentType: 'image/png', upsert: true });
+  assert.ifError(secondUploadError);
+  const { error: secondInsertError } = await secondClient.from('captures').insert({
+    id: secondCaptureId,
+    facets: ['component'],
+    source_url: 'https://example.net/reference',
+    source_origin: 'https://example.net',
+    page_title: 'Second user capture',
+    element_label: 'Second user card',
+    screenshot_path: secondObjectPath,
+    snapshot_version: 1,
+    snapshot: { smoke: true, secondCaptureId },
+  });
+  assert.ifError(secondInsertError);
+
+  const { data: hiddenFromFirst, error: firstReadSecondError } = await client
+    .from('captures')
+    .select('id')
+    .eq('id', secondCaptureId);
+  assert.ifError(firstReadSecondError);
+  assert.deepEqual(hiddenFromFirst, [], 'The first user could read the second user’s capture.');
+
+  const { error: crossOwnerSignedUrlError } = await secondClient.storage
+    .from('reference-shots')
+    .createSignedUrl(objectPath, 60);
+  assert(crossOwnerSignedUrlError, 'A second authenticated user could sign the first user’s screenshot URL.');
+
   const { data: anonymousRows, error: anonymousReadError } = await anonymous
     .from('captures')
     .select('id')
@@ -99,15 +165,20 @@ try {
   smokePassed = true;
 } finally {
   if (objectPath) await client.storage.from('reference-shots').remove([objectPath]);
+  if (secondObjectPath) await secondClient.storage.from('reference-shots').remove([secondObjectPath]);
   await client.from('captures').delete().eq('id', captureId);
+  await secondClient.from('captures').delete().eq('id', secondCaptureId);
   await client.auth.signOut({ scope: 'local' });
+  await secondClient.auth.signOut({ scope: 'local' });
   if (userId) await admin.auth.admin.deleteUser(userId);
+  if (secondUserId) await admin.auth.admin.deleteUser(secondUserId);
 }
 
 if (smokePassed) {
   process.stdout.write([
     'Refer cloud smoke test passed.',
-    '  verified: email/password auth, profile trigger, capture insert/read, anonymous RLS isolation',
+    '  verified: two accounts, profile triggers, owner-only capture insert/read/update, anonymous isolation',
+    '  verified: mutual database and private screenshot isolation between authenticated users',
     '  verified: private screenshot upload, strict path rejection, and signed download',
     '  cleanup: disposable capture, object, session, and user removed',
     '',

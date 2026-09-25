@@ -1,5 +1,7 @@
 import type { CaptureView } from '@/lib/captures';
 
+const sides = (top: string, right = top, bottom = top, left = right) => ({ top, right, bottom, left });
+
 export const demoCaptures: CaptureView[] = [
   {
     id: 'demo-editorial',
@@ -12,11 +14,16 @@ export const demoCaptures: CaptureView[] = [
     fontFamily: 'Iowan Old Style',
     screenshotPath: null,
     screenshotUrl: null,
+    screenshotWidth: 4,
+    screenshotHeight: 3,
     capturedAt: '2026-09-05T16:30:00.000Z',
     note: 'Beautiful tension between the compact label and generous display type.',
     typography: { fontFamily: 'Iowan Old Style, Baskerville, serif', size: '72px', weight: '400', lineHeight: '68px', letterSpacing: '-3.2px', style: 'normal' },
     colors: { text: 'rgb(29, 29, 25)', background: 'rgb(239, 234, 221)' },
-    box: { width: '720px', height: '252px', padding: '0px', margin: '0px 0px 48px', border: '0px none', radius: '0px', shadow: 'none' },
+    box: {
+      width: '720px', height: '252px', padding: '0px', margin: '0px 0px 48px', border: '0px none', radius: '0px', shadow: 'none',
+      paddingSides: sides('0px'), marginSides: sides('0px', '0px', '48px'), borderSides: sides('0px none'),
+    },
     layout: { display: 'block', position: 'static', gap: 'Not captured', align: 'normal', justify: 'normal' },
     selector: 'main > header.intro', role: 'banner', snapshotVersion: 1,
   },
@@ -31,11 +38,16 @@ export const demoCaptures: CaptureView[] = [
     fontFamily: 'Inter',
     screenshotPath: null,
     screenshotUrl: null,
+    screenshotWidth: 4,
+    screenshotHeight: 3,
     capturedAt: '2026-09-03T12:20:00.000Z',
     note: '',
     typography: { fontFamily: 'Inter, sans-serif', size: '14px', weight: '600', lineHeight: '20px', letterSpacing: '-0.1px', style: 'normal' },
     colors: { text: 'rgb(255, 255, 255)', background: 'rgb(34, 72, 55)' },
-    box: { width: '142px', height: '44px', padding: '12px 18px', margin: '0px', border: '0px none', radius: '10px', shadow: '0 1px 2px rgb(0 0 0 / 0.08)' },
+    box: {
+      width: '142px', height: '44px', padding: '12px 18px', margin: '0px', border: '0px none', radius: '10px', shadow: '0 1px 2px rgb(0 0 0 / 0.08)',
+      paddingSides: sides('12px', '18px'), marginSides: sides('0px'), borderSides: sides('0px none'),
+    },
     layout: { display: 'inline-flex', position: 'relative', gap: '8px', align: 'center', justify: 'center' },
     selector: '[data-action="start-project"]', role: 'button', snapshotVersion: 1,
   },
@@ -50,11 +62,16 @@ export const demoCaptures: CaptureView[] = [
     fontFamily: 'Söhne',
     screenshotPath: null,
     screenshotUrl: null,
+    screenshotWidth: 4,
+    screenshotHeight: 3,
     capturedAt: '2026-08-29T09:10:00.000Z',
     note: 'The image, label, and title all share one alignment edge.',
     typography: { fontFamily: 'Söhne, sans-serif', size: '18px', weight: '500', lineHeight: '24px', letterSpacing: '-0.2px', style: 'normal' },
     colors: { text: 'rgb(247, 245, 238)', background: 'rgb(38, 38, 34)' },
-    box: { width: '560px', height: '420px', padding: '24px', margin: '0px', border: '1px solid rgb(74, 74, 67)', radius: '18px', shadow: 'none' },
+    box: {
+      width: '560px', height: '420px', padding: '24px', margin: '0px', border: '1px solid rgb(74, 74, 67)', radius: '18px', shadow: 'none',
+      paddingSides: sides('24px'), marginSides: sides('0px'), borderSides: sides('1px solid rgb(74, 74, 67)'),
+    },
     layout: { display: 'grid', position: 'relative', gap: '28px', align: 'end', justify: 'stretch' },
     selector: 'article.case-study', role: 'article', snapshotVersion: 1,
   },

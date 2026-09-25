@@ -21,7 +21,7 @@ async function showActionError(tabId: number, message: string): Promise<void> {
     browser.action.setBadgeText({ tabId, text: '!' }),
     browser.action.setTitle({
       tabId,
-      title: `Refer cannot inspect this page: ${message}`,
+      title: `Glace cannot inspect this page: ${message}`,
     }),
   ]);
 
@@ -84,7 +84,7 @@ async function handleMessage(
         return { ok: true, cloudState: await getCloudState() };
 
       case 'cloud-sign-in':
-        return { ok: true, cloudState: await signIn(message.email, message.password) };
+        return { ok: true, cloudState: await signIn() };
 
       case 'cloud-sign-out':
         return { ok: true, cloudState: await signOut() };

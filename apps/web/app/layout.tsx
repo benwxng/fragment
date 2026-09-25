@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Refer — Design reference library', template: '%s — Refer' },
+  title: { default: 'Glace — Design reference library', template: '%s — Glace' },
   description: 'A private visual library for typography, components, color, and layout references.',
 };
 

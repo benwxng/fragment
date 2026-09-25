@@ -9,7 +9,7 @@ import { ConfigurationScreen } from '@/components/configuration';
 import { DeleteCapture } from '@/components/delete-capture';
 import { ArrowIcon, ExternalIcon } from '@/components/icons';
 import { formatCaptureDate, isCaptureId, safeSourceUrl, type CaptureView } from '@/lib/captures';
-import { isSupabaseConfigured } from '@/lib/config';
+import { isNeonConfigured } from '@/lib/config';
 import { getCapture } from '@/lib/data';
 import { demoCaptures } from '@/lib/demo';
 
@@ -53,7 +53,74 @@ function ColorValue({ value }: { value: string }) {
   );
 }
 
+function compactBorder(value: string): string {
+  if (value === '—' || value === 'Not captured') return '—';
+  const [width = value, style] = value.split(/\s+/u);
+  if (width === '0px') return '0';
+  return style ? `${width} ${style}` : width;
+}
+
+function BoxLayer({
+  name,
+  sides,
+  variant,
+  children,
+}: {
+  name: string;
+  sides: CaptureView['box']['marginSides'];
+  variant: 'margin' | 'border' | 'padding';
+  children: ReactNode;
+}) {
+  const displayValue = variant === 'border' ? compactBorder : (value: string) => value;
+  return (
+    <div className={`box-model-layer box-model-${variant}`}>
+      <span className="box-model-layer-name">{name}</span>
+      <span className="box-model-side box-model-top">{displayValue(sides.top)}</span>
+      <span className="box-model-side box-model-right">{displayValue(sides.right)}</span>
+      <span className="box-model-side box-model-bottom">{displayValue(sides.bottom)}</span>
+      <span className="box-model-side box-model-left">{displayValue(sides.left)}</span>
+      <div className="box-model-inner">{children}</div>
+    </div>
+  );
+}
+
+function BoxModel({ box }: { box: CaptureView['box'] }) {
+  const describeSides = (name: string, sides: CaptureView['box']['marginSides']) =>
+    `${name}: top ${sides.top}, right ${sides.right}, bottom ${sides.bottom}, left ${sides.left}`;
+  const description = [
+    describeSides('Margin', box.marginSides),
+    describeSides('Border', box.borderSides),
+    describeSides('Padding', box.paddingSides),
+    `Content: ${box.width} by ${box.height}`,
+  ].join('. ');
+  return (
+    <section className="property-section property-section-box" aria-labelledby="box-model-title">
+      <h2 id="box-model-title">Box model</h2>
+      <div className="box-model-figure">
+        <div className="box-model-visual" role="img" aria-label={description}>
+          <BoxLayer name="Margin" sides={box.marginSides} variant="margin">
+            <BoxLayer name="Border" sides={box.borderSides} variant="border">
+              <BoxLayer name="Padding" sides={box.paddingSides} variant="padding">
+                <div className="box-model-content">
+                  <span>Content</span>
+                  <strong>{box.width} × {box.height}</strong>
+                </div>
+              </BoxLayer>
+            </BoxLayer>
+          </BoxLayer>
+        </div>
+      </div>
+      <dl className="property-list box-model-extras">
+        <div className="property-row"><dt>Radius</dt><dd>{box.radius}</dd></div>
+        <div className="property-row"><dt>Shadow</dt><dd>{box.shadow}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
 function DetailMedia({ capture }: { capture: CaptureView }) {
+  const specimen = capture.textExcerpt || 'Aa';
+  const specimenPreview = specimen.length > 160 ? `${Array.from(specimen).slice(0, 159).join('')}…` : specimen;
   const style = {
     '--specimen-color': capture.colors.text.startsWith('rgb') ? capture.colors.text : '#181916',
     '--specimen-bg': capture.colors.background.startsWith('rgb') ? capture.colors.background : '#f5f4ef',
@@ -71,16 +138,15 @@ function DetailMedia({ capture }: { capture: CaptureView }) {
           priority
         />
       ) : (
-        <p className="detail-specimen">{capture.textExcerpt || 'Aa'}</p>
+        <p className={`detail-specimen${specimen.length > 80 ? ' is-long' : ''}`}>{specimenPreview}</p>
       )}
-      <span className="media-meta">{capture.screenshotUrl ? 'Captured preview' : 'Type specimen'}</span>
     </div>
   );
 }
 
 export default async function ReferenceDetailPage({ params, searchParams }: DetailProps) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const configured = isSupabaseConfigured();
+  const configured = isNeonConfigured();
   const demo = query.demo === '1' && !configured;
   if (!demo && !isCaptureId(id)) notFound();
   if (!configured && !demo) return <ConfigurationScreen />;
@@ -127,15 +193,7 @@ export default async function ReferenceDetailPage({ params, searchParams }: Deta
             ['Style', capture.typography.style],
             ['Text color', <ColorValue value={capture.colors.text} key="text-color" />],
           ]} />
-          <PropertySection title="Box" rows={[
-            ['Width', capture.box.width],
-            ['Height', capture.box.height],
-            ['Padding', capture.box.padding],
-            ['Margin', capture.box.margin],
-            ['Border', capture.box.border],
-            ['Radius', capture.box.radius],
-            ['Shadow', capture.box.shadow],
-          ]} />
+          <BoxModel box={capture.box} />
           <PropertySection title="Layout" rows={[
             ['Display', capture.layout.display],
             ['Position', capture.layout.position],
@@ -149,6 +207,7 @@ export default async function ReferenceDetailPage({ params, searchParams }: Deta
             ['Selector', capture.selector],
             ['Snapshot', `Version ${capture.snapshotVersion}`],
             ['Source', capture.sourceHost],
+            ['Captured text', capture.textExcerpt || 'Not captured'],
           ]} />
         </div>
 

@@ -6,7 +6,7 @@ import { CaptureCard } from '@/components/capture-card';
 import { ConfigurationScreen } from '@/components/configuration';
 import { LibraryFilters } from '@/components/library-filters';
 import { captureMatches } from '@/lib/captures';
-import { isSupabaseConfigured } from '@/lib/config';
+import { isNeonConfigured } from '@/lib/config';
 import { listCaptures } from '@/lib/data';
 import { demoCaptures } from '@/lib/demo';
 
@@ -25,8 +25,8 @@ const allowedFacets = new Set(['all', 'typography', 'component', 'color', 'layou
 
 export default async function LibraryPage({ searchParams }: { searchParams: Promise<LibrarySearchParams> }) {
   const parameters = await searchParams;
-  if (!isSupabaseConfigured() && parameters.demo !== '1') return <ConfigurationScreen />;
-  const demo = parameters.demo === '1' && !isSupabaseConfigured();
+  if (!isNeonConfigured() && parameters.demo !== '1') return <ConfigurationScreen />;
+  const demo = parameters.demo === '1' && !isNeonConfigured();
   const query = parameters.q?.slice(0, 120) ?? '';
   const facet = parameters.facet && allowedFacets.has(parameters.facet) ? parameters.facet : 'all';
   const library = demo ? { captures: demoCaptures, email: 'Preview mode' } : await listCaptures();
@@ -38,15 +38,11 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       <AppHeader email={library.email} count={library.captures.length} canSignOut={!demo} />
       <main className="library-main" id="main-content">
         <header className="library-intro">
-          <div>
-            <p className="eyebrow">Design memory</p>
-            <h1>Worth remembering.</h1>
-            <p className="lede">A private record of the type, color, spacing, and components that made you stop.</p>
-          </div>
+          <h1>Your curation</h1>
           {demo ? (
             <aside className="demo-notice">
               <span>Preview data</span>
-              <Link href="/">Connect Supabase</Link>
+              <Link href="/">Connect Neon</Link>
             </aside>
           ) : null}
         </header>

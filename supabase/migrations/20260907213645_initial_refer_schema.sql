@@ -179,7 +179,7 @@ after insert on auth.users
 for each row execute function private.handle_new_user();
 
 -- Backfill profiles when this migration is applied to a project that already
--- contains the owner's Auth account.
+-- contains Auth users.
 insert into public.profiles (id, display_name)
 select
   id,

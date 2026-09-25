@@ -1,16 +1,34 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 
 import { signIn, signUp } from '@/app/actions';
 import { initialFormState } from '@/lib/form-state';
+import { authClient } from '@/lib/auth/client';
 
-export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
+export function AuthForm({ mode, returnTo = '/library' }: { mode: 'signin' | 'signup'; returnTo?: string }) {
   const action = mode === 'signin' ? signIn : signUp;
   const [state, formAction, pending] = useActionState(action, initialFormState);
+  const [googlePending, setGooglePending] = useState(false);
+  const [googleError, setGoogleError] = useState('');
+  async function googleSignIn() {
+    setGooglePending(true);
+    setGoogleError('');
+    try {
+      const { error } = await authClient.signIn.social({ provider: 'google', callbackURL: new URL(returnTo, window.location.origin).href });
+      if (error) throw new Error(error.message ?? 'Google sign-in failed.');
+    } catch (error) {
+      setGoogleError(error instanceof Error ? error.message : 'Google sign-in failed.');
+    } finally { setGooglePending(false); }
+  }
 
   return (
     <form action={formAction} className="auth-form">
+      <input type="hidden" name="returnTo" value={returnTo} />
+      <button className="button button-secondary auth-submit" type="button" disabled={googlePending || pending} onClick={googleSignIn}>
+        {googlePending ? 'Connecting to Google…' : 'Continue with Google'}
+      </button>
+      {googleError ? <p role="alert">{googleError}</p> : null}
       <div className="field">
         <label htmlFor="email">Email</label>
         <input id="email" name="email" type="email" autoComplete="email" inputMode="email" required />

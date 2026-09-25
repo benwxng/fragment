@@ -1,8 +1,8 @@
 # Design reference tool — product and technical architecture
 
-Status: implemented, connected to live Supabase, and deployed to Vercel  
-Primary browsers: Arc/Chrome and Firefox  
-Working scope: personal tool first, multi-user-safe data model from day one
+Status: implemented, connected to Neon, and deployed to Vercel
+Primary browsers: Arc/Chrome and Firefox
+Working scope: public account-based product with private per-user libraries
 
 ## 1. Product promise
 
@@ -28,10 +28,11 @@ apps/
   web/         Next.js reference library
 packages/
   capture/     DOM inspection, normalization, and shared capture types
-  database/    Supabase clients and generated database types
+  database/    shared database row types
   ui/          shared tokens and small UI primitives
-supabase/
-  migrations/  schema, indexes, storage policies, and RLS
+backend/       authenticated Neon Function API
+neon/
+  migrations/  schema, indexes, account mapping, and RLS
 docs/
 ```
 
@@ -45,15 +46,14 @@ has a newer compatible runtime; an `.nvmrc` will make automated builds reproduci
 - **TypeScript** keeps the capture model explicit across both surfaces. The extension
   uses a small dependency-free DOM layer inside Shadow DOM; the standalone Next.js
   library uses React server and client components.
-- **Supabase** provides hosted Postgres, authentication, row-level security, and
-  screenshot storage in one service. D1 is SQLite rather than Postgres; choosing it
-  would still require separate authentication and object-storage decisions.
+- **Neon** provides Postgres, managed authentication, private object storage, and
+  the serverless API. The API enforces owner access and queries through a restricted
+  database role with per-user RLS.
 - **Next.js on Vercel** is the simplest deployment path for the authenticated web
   library. The extension is independently packaged for each browser.
 
-Supabase's public publishable key is safe to ship in the extension and web client.
-Authorization is enforced by row-level security. A service-role/secret key must never
-be included in either client.
+Clients receive only public service URLs. Database and storage credentials stay in
+the Neon Function; web session cookies use a server-only secret.
 
 ## 3. Extension anatomy
 
@@ -66,7 +66,7 @@ Background service worker
   - injects or toggles the inspector
   - captures the visible tab on selection
   - crops and uploads the image
-  - writes the capture through Supabase
+  - writes the capture through the Neon API
         |
         v
 Isolated content script + Shadow DOM UI
@@ -88,9 +88,11 @@ Request only:
 
 - `activeTab` — temporary access after a toolbar click or shortcut;
 - `scripting` — inject the inspector into the active page;
-- `storage` — keep the local session and pending captures.
+- `storage` — keep the local session and pending captures;
+- `alarms` — retry pending sync;
+- `identity` — authorize cloud-enabled builds through the website.
 
-Add host access only for the configured Supabase project and deployed web app. Do not
+Add host access only for the configured Neon API and deployed web app. Do not
 request persistent `<all_urls>` access for the MVP.
 
 ### Activation and interaction
@@ -177,7 +179,7 @@ Initial tables:
 
 ```text
 profiles
-  id uuid primary key -> auth.users
+  id uuid primary key -> accounts.id
   display_name text
   created_at timestamptz
 
@@ -214,33 +216,37 @@ Indexes cover `(user_id, captured_at desc)`, collection/date and font lookups, p
 indexes for facets and the generated search document. A general GIN index on `snapshot`
 can wait until real query patterns justify it.
 
-Enable RLS on every exposed table. Each select/insert/update/delete policy requires
-`auth.uid() = user_id`; updates use both `USING` and `WITH CHECK`. Screenshot objects
-use paths shaped as `{user_id}/{capture_id}.webp`, with matching ownership policies.
+Each application account has a stable UUID and a separate Neon Auth user ID. Existing
+accounts retain their UUID; a first verified login can claim a matching imported
+verified email. Unverified users cannot claim an imported library.
 
-The extension writes directly with the signed-in user's JWT. A failed upload is placed
-in a small local retry queue and shown as **Saved on this device** until synchronization
-succeeds.
+The API validates Neon JWTs or hashed, revocable extension sessions. Its database
+transactions switch to the restricted `refer_app` role and set the current owner.
+RLS requires that owner for every row operation. Screenshot keys are
+`{account_id}/{capture_id}.png` or `.webp` in the private `uploads` bucket; the API
+validates ownership before uploads/deletes and issues short-lived signed read URLs.
 
-The local IndexedDB library is atomically bound to the first Supabase user that enables
-sync. That account may continue capturing while signed out, but a different account is
-blocked before the outbound queue is processed or a reference payload is read. Supporting
-deliberate account migration later requires an explicit export/reset/import flow rather
-than implicit adoption.
+The local IndexedDB library remains bound to the first account that enables sync.
+A different account is blocked before the outbound queue is processed or a reference
+payload is read. Use separate browser profiles for separate accounts.
 
-All network traffic originates from the background context, not the page content
-script. This keeps Supabase requests outside the host page's CORS policy and leaves
-authentication tokens out of the inspected page's JavaScript environment.
+All extension network traffic originates from the background context. A failed
+upload stays in the durable local retry queue without blocking local capture.
 
 ## 6. Authentication
 
-For the personal MVP, use email and password with public sign-up disabled after the
-owner account is created. Sign in separately in the extension popup and web app; both
-sessions represent the same Supabase user.
+The web app uses Neon Managed Auth with email/password, email verification codes,
+and Google sign-in through the official Next.js SDK. Existing Supabase passwords
+and sessions are not migrated. Verified matching emails restore existing libraries.
 
-This avoids browser-specific OAuth redirect behavior in the first release. Google OAuth
-can be added later with the browser identity API and registered Chromium/Firefox redirect
-URLs once stable store IDs exist.
+The extension opens `/extension/connect` with the browser identity API. After user
+approval, a two-minute single-use authorization code is exchanged using PKCE for a
+30-day extension session. Only its hash is stored server-side, and sign-out revokes
+it. Tokens never enter inspected pages.
+
+The production web origin is on the Neon Auth allowlist. Custom Google OAuth
+credentials and custom production SMTP remain account configuration steps; see
+[NEON_SETUP.md](NEON_SETUP.md).
 
 ## 7. Reference library
 
@@ -272,7 +278,7 @@ second, advanced layout behind one disclosure.
   listing needs a privacy policy; Firefox builds declare transmitted website-content
   and browsing-activity categories in the manifest.
 - Keep all authorization in RLS; never trust a `user_id` supplied without JWT ownership.
-- Store no Supabase secret/service-role key in browser-delivered code.
+- Store no database, storage, or server secret in browser-delivered code.
 
 ## 9. Known platform boundaries
 
@@ -296,9 +302,9 @@ second, advanced layout behind one disclosure.
 - One-click capture to local extension storage.
 - Local library page proves the capture model with no cloud dependency.
 
-### Phase 2 — personal cloud library
+### Phase 2 — account-based cloud library
 
-- Supabase schema, RLS, owner authentication, screenshot bucket.
+- Neon schema, per-user RLS, public account authentication, screenshot bucket.
 - Extension sync/retry flow.
 - Deployed web library with search, facets, detail view, notes, tags, and deletion undo.
 
@@ -312,17 +318,13 @@ second, advanced layout behind one disclosure.
 - privacy policy, store artwork, automated release packages, Chrome Web Store submission,
   and Firefox Add-ons signing/submission.
 
-## 11. What the owner needs to provide
+## 11. Deployment prerequisites
 
 Nothing is required for Phase 1.
 
-For Phase 2:
-
-1. Create one Supabase project in the preferred region.
-2. Provide the project URL and new `sb_publishable_...` key through local environment
-   variables. Never provide a secret/service-role key for client code.
-3. Create the owner account, then disable public sign-up.
-4. Create or connect a Vercel account/project when the web library is ready to deploy.
+For Phase 2, follow [NEON_SETUP.md](NEON_SETUP.md): deploy Neon services, apply
+migrations, configure web server secrets and public extension URLs, configure the
+production OAuth provider, and verify the full capture flow.
 
 For public distribution only:
 

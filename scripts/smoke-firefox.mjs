@@ -12,8 +12,8 @@ const fixtureUrl = pathToFileURL(join(repoRoot, 'fixtures/inspector-playground.h
 
 function buildFirefoxExtension() {
   const env = { ...process.env };
-  delete env.WXT_SUPABASE_URL;
-  delete env.WXT_SUPABASE_PUBLISHABLE_KEY;
+  env.WXT_NEON_API_URL = 'local-only';
+  env.WXT_SITE_URL = 'local-only';
   execFileSync('pnpm', ['--filter', '@refer/extension', 'build:firefox'], {
     cwd: repoRoot,
     env,

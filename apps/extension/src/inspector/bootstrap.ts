@@ -3,6 +3,7 @@ import { inferFacets, inspectElement, type Reference } from '@refer/capture';
 import type { ExtensionMessage, ExtensionResponse } from '../messages';
 import { captureElementImage, type ScreenshotCrop, waitForOverlayToDisappear } from './screenshot';
 import { inspectorStyles } from './styles';
+import { createSaveFeedback } from './save-feedback';
 
 const HOST_ID = '__refer_design_inspector__';
 const TOGGLE_EVENT = 'refer:toggle-inspector';
@@ -21,6 +22,7 @@ interface HudElements {
   dimensions: HTMLDivElement;
   sections: HTMLDivElement;
   chipLabel: HTMLSpanElement;
+  libraryButton: HTMLButtonElement;
   exitButton: HTMLButtonElement;
   toast: HTMLDivElement;
   toastMark: HTMLSpanElement;
@@ -92,10 +94,11 @@ function createUi(shadow: ShadowRoot): HudElements {
   statusDot.setAttribute('aria-hidden', 'true');
   const chipLabel = element('span', 'chip-label');
   chipLabel.textContent = 'Inspecting';
+  const libraryButton = createButton('library', 'View references');
   const exitButton = createButton('exit', 'Exit');
   exitButton.setAttribute('aria-label', 'Exit inspector');
   exitButton.setAttribute('aria-keyshortcuts', 'Escape');
-  chip.append(statusDot, chipLabel, exitButton);
+  chip.append(statusDot, chipLabel, libraryButton, exitButton);
 
   const hud = element('section', 'hud');
   hud.hidden = true;
@@ -155,6 +158,7 @@ function createUi(shadow: ShadowRoot): HudElements {
     dimensions,
     sections,
     chipLabel,
+    libraryButton,
     exitButton,
     toast,
     toastMark,
@@ -206,11 +210,11 @@ function compactColor(color: string): string {
     .join('')}`.toUpperCase();
 }
 
-function px(value: string): string {
+function px(value: string, precision = 1): string {
   const numeric = Number.parseFloat(value);
   if (!Number.isFinite(numeric)) return value;
   if (Math.abs(numeric) < 0.005) return '0';
-  return `${Number(numeric.toFixed(1))} px`;
+  return `${Number(numeric.toFixed(precision))} px`;
 }
 
 function spacing(values: readonly string[]): string {
@@ -277,7 +281,8 @@ function renderProperties(ui: HudElements, target: Element): void {
   ui.dimensions.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
   ui.sections.replaceChildren(
     createSection('Type', [
-      { label: primaryFont(computed.fontFamily), value: `${px(computed.fontSize)} / ${px(computed.lineHeight)}` },
+      { label: primaryFont(computed.fontFamily), value: px(computed.fontSize, 0) },
+      { label: 'Line height', value: px(computed.lineHeight) },
       { label: 'Weight', value: computed.fontWeight },
       { label: 'Tracking', value: px(computed.letterSpacing) },
     ]),
@@ -468,6 +473,7 @@ export function bootstrapInspector(): void {
   const childTrail = new WeakMap<Element, Element>();
   const cleanups: Array<() => void> = [];
   const restoreCursor = installCursor(host);
+  const saveFeedback = createSaveFeedback(ui.root, () => target);
 
   function listen(
     eventTarget: EventTarget,
@@ -525,6 +531,7 @@ export function bootstrapInspector(): void {
   async function saveTarget(elementToSave: Element): Promise<void> {
     if (!active || saving || !elementToSave.isConnected) return;
     saving = true;
+    saveFeedback.clear();
     retryTarget = elementToSave;
     ui.chipLabel.textContent = 'Saving…';
     announce(ui.announcer, 'Saving reference');
@@ -552,6 +559,7 @@ export function bootstrapInspector(): void {
           : 'Saved on this device'
         : 'Saved';
       showToast('saved', message);
+      if (active) saveFeedback.saved(elementToSave);
     } catch (error) {
       const message =
         error instanceof Error && error.message.startsWith('Move the element')
@@ -572,6 +580,7 @@ export function bootstrapInspector(): void {
   function cleanup(): void {
     if (!active) return;
     active = false;
+    saveFeedback.dispose();
     if (frame) cancelAnimationFrame(frame);
     if (geometryFrame) cancelAnimationFrame(geometryFrame);
     for (const dispose of cleanups.splice(0)) dispose();
@@ -679,13 +688,16 @@ export function bootstrapInspector(): void {
   ui.closeToastButton.addEventListener('click', dismissToast);
   cleanups.push(() => ui.closeToastButton.removeEventListener('click', dismissToast));
 
-  const viewReferences = (): void => {
-    void sendMessage({ type: 'open-library' }).then((response) => {
+  const viewReferences = async (): Promise<void> => {
+    try {
+      const response = await sendMessage({ type: 'open-library' });
       if (!response.ok) showToast('error', 'Unable to open references. Try again.');
-    });
+    } catch {
+      showToast('error', 'Unable to open references. Try again.');
+    }
   };
-  ui.viewButton.addEventListener('click', viewReferences);
-  cleanups.push(() => ui.viewButton.removeEventListener('click', viewReferences));
+  listen(ui.viewButton, 'click', viewReferences);
+  listen(ui.libraryButton, 'click', viewReferences);
 
   const retrySave = (): void => {
     if (retryTarget?.isConnected) void saveTarget(retryTarget);

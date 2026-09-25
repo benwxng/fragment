@@ -34,25 +34,18 @@ export default defineConfig({
     ],
   },
   manifest: ({ browser }) => {
-    const configuredUrl = import.meta.env.WXT_SUPABASE_URL?.trim();
-    let cloudOrigin: string | null = null;
-    try {
-      if (configuredUrl) {
-        const candidate = new URL(configuredUrl);
-        const localDevelopment = candidate.protocol === 'http:'
-          && (candidate.hostname === '127.0.0.1' || candidate.hostname === 'localhost');
-        if (candidate.protocol === 'https:' || localDevelopment) cloudOrigin = candidate.origin;
-      }
-    } catch {
-      cloudOrigin = null;
-    }
-    const cloudConfigured = Boolean(
-      cloudOrigin && import.meta.env.WXT_SUPABASE_PUBLISHABLE_KEY?.trim(),
-    );
+    const cloudOrigins = [import.meta.env.WXT_NEON_API_URL, import.meta.env.WXT_SITE_URL]
+      .flatMap(value => {
+        try {
+          const url = new URL(value?.trim() ?? '');
+          return url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost','127.0.0.1'].includes(url.hostname)) ? [url.origin] : [];
+        } catch { return []; }
+      });
+    const cloudConfigured = cloudOrigins.length === 2;
 
     return {
-    name: 'Refer — Design Inspector',
-    short_name: 'Refer',
+    name: 'Glace — Design Inspector',
+    short_name: 'Glace',
     description: 'Inspect and save typography, color, spacing, and component references.',
     icons: {
       16: '/icon/16.png',
@@ -61,8 +54,8 @@ export default defineConfig({
       96: '/icon/96.png',
       128: '/icon/128.png',
     },
-    permissions: ['activeTab', 'alarms', 'scripting', 'storage'],
-    ...(cloudConfigured && cloudOrigin ? { host_permissions: [`${cloudOrigin}/*`] } : {}),
+    permissions: ['activeTab', 'alarms', 'scripting', 'storage', ...(cloudConfigured ? ['identity' as const] : [])],
+    ...(cloudConfigured ? { host_permissions: [...new Set(cloudOrigins)].map(origin => `${origin}/*`) } : {}),
     action: {
       default_title: 'Inspect this page',
       default_icon: {

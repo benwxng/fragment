@@ -12,6 +12,8 @@ export interface CaptureView {
   fontFamily: string;
   screenshotPath: string | null;
   screenshotUrl: string | null;
+  screenshotWidth: number;
+  screenshotHeight: number;
   capturedAt: string;
   note: string;
   typography: {
@@ -34,6 +36,9 @@ export interface CaptureView {
     border: string;
     radius: string;
     shadow: string;
+    marginSides: BoxSides;
+    paddingSides: BoxSides;
+    borderSides: BoxSides;
   };
   layout: {
     display: string;
@@ -45,6 +50,13 @@ export interface CaptureView {
   selector: string;
   role: string;
   snapshotVersion: number;
+}
+
+export interface BoxSides {
+  top: string;
+  right: string;
+  bottom: string;
+  left: string;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -80,6 +92,14 @@ function firstString(value: unknown, paths: readonly (readonly string[])[], fall
   return fallback;
 }
 
+function firstNumber(value: unknown, paths: readonly (readonly string[])[], fallback: number): number {
+  for (const path of paths) {
+    const candidate = valueAt(value, path);
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) return candidate;
+  }
+  return fallback;
+}
+
 function hostFrom(sourceOrigin: string | null, sourceUrl: string): string {
   const candidate = sourceOrigin || sourceUrl;
   if (!candidate) return 'Saved reference';
@@ -91,15 +111,48 @@ function hostFrom(sourceOrigin: string | null, sourceUrl: string): string {
 }
 
 function summarizeSides(value: unknown): string {
-  const record = asRecord(value);
-  if (!record) return typeof value === 'string' && value ? value : 'Not captured';
-  const top = String(record.top ?? '—');
-  const right = String(record.right ?? '—');
-  const bottom = String(record.bottom ?? '—');
-  const left = String(record.left ?? '—');
+  const { top, right, bottom, left } = normalizeSides(value);
   if (top === right && top === bottom && top === left) return top;
   if (top === bottom && right === left) return `${top} ${right}`;
   return `${top} ${right} ${bottom} ${left}`;
+}
+
+function shorthandSides(value: string): BoxSides {
+  const parts = value.trim().split(/\s+/u).filter(Boolean);
+  if (parts.length === 0) return { top: '—', right: '—', bottom: '—', left: '—' };
+  const top = parts[0] ?? '—';
+  const second = parts[1] ?? top;
+  const third = parts[2] ?? top;
+  const fourth = parts[3] ?? second;
+  if (parts.length === 2) return { top, right: second, bottom: top, left: second };
+  if (parts.length === 3) return { top, right: second, bottom: third, left: second };
+  return { top, right: second, bottom: third, left: fourth };
+}
+
+function normalizeSides(value: unknown): BoxSides {
+  const record = asRecord(value);
+  if (!record) return typeof value === 'string' && value.trim()
+    ? shorthandSides(value)
+    : { top: '—', right: '—', bottom: '—', left: '—' };
+  return {
+    top: String(record.top ?? record.topLeft ?? '—'),
+    right: String(record.right ?? record.topRight ?? '—'),
+    bottom: String(record.bottom ?? record.bottomRight ?? '—'),
+    left: String(record.left ?? record.bottomLeft ?? '—'),
+  };
+}
+
+function normalizeBorderSides(value: unknown): BoxSides {
+  const record = asRecord(value);
+  if (!record) {
+    const fallback = typeof value === 'string' && value.trim() ? value : '—';
+    return { top: fallback, right: fallback, bottom: fallback, left: fallback };
+  }
+  const side = (name: keyof BoxSides): string => {
+    const border = asRecord(record[name]);
+    return border ? [border.width, border.style, border.color].filter(Boolean).join(' ') || '—' : '—';
+  };
+  return { top: side('top'), right: side('right'), bottom: side('bottom'), left: side('left') };
 }
 
 function summarizeBorder(value: unknown): string {
@@ -184,6 +237,8 @@ export function normalizeCapture(row: CaptureRow, screenshotUrl: string | null =
     fontFamily: fontFamily.split(',')[0]?.replace(/["']/gu, '').trim() || 'Unknown typeface',
     screenshotPath: row.screenshot_path,
     screenshotUrl,
+    screenshotWidth: firstNumber(snapshot, [['screenshot', 'width']], 4),
+    screenshotHeight: firstNumber(snapshot, [['screenshot', 'height']], 3),
     capturedAt: row.captured_at,
     note: row.note ?? '',
     typography: {
@@ -207,6 +262,9 @@ export function normalizeCapture(row: CaptureRow, screenshotUrl: string | null =
       border: summarizeBorder(valueAt(snapshot, ['element', 'box', 'border'])),
       radius: summarizeSides(valueAt(snapshot, ['element', 'box', 'radius'])),
       shadow: firstString(snapshot, [['element', 'effects', 'boxShadow']], 'Not captured'),
+      marginSides: normalizeSides(valueAt(snapshot, ['element', 'box', 'margin'])),
+      paddingSides: normalizeSides(valueAt(snapshot, ['element', 'box', 'padding'])),
+      borderSides: normalizeBorderSides(valueAt(snapshot, ['element', 'box', 'border'])),
     },
     layout: {
       display: firstString(snapshot, [['element', 'layout', 'display']], 'Not captured'),

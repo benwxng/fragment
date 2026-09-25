@@ -54,6 +54,7 @@ export const inspectorStyles = String.raw`
   }
 
   .highlight[hidden],
+  .save-feedback[hidden],
   .hud[hidden],
   .toast[hidden] {
     display: none;
@@ -121,7 +122,8 @@ export const inspectorStyles = String.raw`
     outline-offset: 2px;
   }
 
-  .exit {
+  .exit,
+  .library {
     padding-inline: 10px;
     color: var(--refer-muted);
     font-size: 12px;
@@ -309,6 +311,56 @@ export const inspectorStyles = String.raw`
 
   .toast[data-kind="error"] .toast-mark {
     color: #fda29b;
+  }
+
+  .feedback-toolbar {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 6;
+    display: grid;
+    gap: 9px;
+    width: min(292px, calc(100vw - 32px));
+    padding: 14px;
+    border-radius: 16px;
+    background: var(--refer-panel);
+    box-shadow: 0 12px 40px #0004, inset 0 0 0 1px var(--refer-line);
+    pointer-events: auto;
+  }
+  .feedback-toolbar strong { font-size: 13px; }
+  .feedback-note { color: var(--refer-muted); font-size: 10px; }
+  .feedback-choices { display: flex; gap: 4px; }
+  .feedback-toolbar button { padding: 8px; border-radius: 8px; font-size: 10px; }
+  .feedback-choices button { flex: 1; }
+  .feedback-choices button[aria-pressed="true"] { color: #153524; background: var(--refer-accent); }
+  .save-feedback {
+    position: fixed;
+    z-index: 5;
+    pointer-events: none;
+    border-radius: 5px;
+  }
+  .save-confirmation {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 76px;
+    height: 28px;
+    border: 1px solid rgb(255 255 255 / 0.16);
+    border-radius: 8px;
+    background: #202521;
+    color: #f0f5f1;
+    font-size: 11px;
+    font-weight: 550;
+    box-shadow: 0 2px 6px #0002;
+    pointer-events: none;
+  }
+  .save-feedback-check { width: 16px; height: 16px; color: #a6f4c5; }
+  .save-feedback-check path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+  .save-feedback-stamp .save-confirmation { width: 32px; height: 32px; border-radius: 50%; }
+  @media (max-width: 700px) {
+    .root:has(.feedback-toolbar) .toast { bottom: 190px; }
   }
 
   @media (hover: hover) {

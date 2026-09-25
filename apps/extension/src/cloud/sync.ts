@@ -1,7 +1,6 @@
 import type { Reference } from '@refer/capture';
 import {
   getReferenceScreenshotPath,
-  REFERENCE_SCREENSHOTS_BUCKET,
   type CaptureInsert,
   type Json,
   type ReferenceScreenshotExtension,
@@ -93,14 +92,7 @@ async function uploadReference(job: SyncJob, userId: string, reference: Referenc
   const storagePath = screenshotPath(userId, reference);
 
   if (storagePath && reference.screenshot?.dataUrl) {
-    const { error } = await client.storage
-      .from(REFERENCE_SCREENSHOTS_BUCKET)
-      .upload(storagePath, dataUrlToBlob(reference.screenshot.dataUrl), {
-        contentType: reference.screenshot.mimeType,
-        cacheControl: '31536000',
-        upsert: true,
-      });
-    if (error) throw error;
+    await client.uploadScreenshot(reference.id, dataUrlToBlob(reference.screenshot.dataUrl), reference.screenshot.mimeType === 'image/png' ? 'png' : 'webp');
   }
 
   const typography = reference.element.typography;
@@ -124,8 +116,7 @@ async function uploadReference(job: SyncJob, userId: string, reference: Referenc
     collection_id: reference.collectionId,
     captured_at: reference.capturedAt,
   } satisfies CaptureInsert;
-  const { error } = await client.from('captures').upsert(row, { onConflict: 'id' });
-  if (error) throw error;
+  await client.upsertCapture(row);
   await completeSyncJob(job.referenceId, job.token);
 }
 
@@ -133,27 +124,7 @@ async function deleteRemoteReference(job: SyncJob, userId: string): Promise<void
   const client = getCloudClient();
   if (!client) throw new Error('Cloud sync is not configured.');
 
-  const { data, error: readError } = await client
-    .from('captures')
-    .select('screenshot_path')
-    .eq('id', job.referenceId)
-    .maybeSingle();
-  if (readError) throw readError;
-
-  const possiblePaths = data?.screenshot_path
-    ? [data.screenshot_path]
-    : [
-        getReferenceScreenshotPath(userId, job.referenceId, 'webp'),
-        getReferenceScreenshotPath(userId, job.referenceId, 'png'),
-      ];
-  if (possiblePaths.length) {
-    const { error: storageError } = await client.storage
-      .from(REFERENCE_SCREENSHOTS_BUCKET)
-      .remove(possiblePaths);
-    if (storageError) throw storageError;
-  }
-  const { error: deleteError } = await client.from('captures').delete().eq('id', job.referenceId);
-  if (deleteError) throw deleteError;
+  await client.deleteCapture(job.referenceId);
   await completeSyncJob(job.referenceId, job.token);
 }
 
@@ -209,6 +180,10 @@ async function runSync(force: boolean): Promise<CloudState> {
   const startingMeta = await getMeta();
   const ownership = await claimSyncOwner(data.session.user.id, startingMeta.seededUserId);
   if (ownership.status === 'mismatch') {
+    // A restored session can belong to a different account after browser sync,
+    // profile cloning, or another extension context. Remove it before returning
+    // so the UI never presents that account as safely connected to this library.
+    await client.auth.signOut({ scope: 'local' });
     await setMeta({ ...startingMeta, lastError: ACCOUNT_MISMATCH_MESSAGE });
     await browser.alarms.clear(RETRY_ALARM);
     return getCloudState();
@@ -262,10 +237,10 @@ export function syncNow(force = false): Promise<CloudState> {
   return activeSync;
 }
 
-export async function signIn(email: string, password: string): Promise<CloudState> {
+export async function signIn(): Promise<CloudState> {
   const client = getCloudClient();
   if (!client) throw new Error('Cloud sync is not configured in this build.');
-  const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
+  const { data, error } = await client.auth.signIn();
   if (error) throw error;
   const userId = data.user?.id;
   if (!userId) throw new Error('Cloud sign-in completed without a user identity.');

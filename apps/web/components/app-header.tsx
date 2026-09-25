@@ -5,9 +5,8 @@ import { MarkIcon } from '@/components/icons';
 
 export function Brand() {
   return (
-    <Link className="brand" href="/" aria-label="Refer home">
+    <Link className="brand" href="/" aria-label="Glace home">
       <MarkIcon className="brand-mark" />
-      <span>Refer</span>
     </Link>
   );
 }

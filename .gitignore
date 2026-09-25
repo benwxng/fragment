@@ -12,3 +12,6 @@ output/
 .env
 .env.*
 !.env.example
+.neon
+.vercel
+.env*

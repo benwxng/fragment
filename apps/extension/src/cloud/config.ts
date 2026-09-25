@@ -1,25 +1,15 @@
-export interface CloudConfig {
-  url: string;
-  publishableKey: string;
-}
-
+export interface CloudConfig { apiUrl: string; siteUrl: string }
 function configuredUrl(value: string | undefined): string | null {
   if (!value?.trim()) return null;
   try {
     const url = new URL(value.trim());
-    const localDevelopment = url.protocol === 'http:'
-      && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
-    if (url.protocol !== 'https:' && !localDevelopment) return null;
+    const local = url.protocol === 'http:' && ['127.0.0.1','localhost'].includes(url.hostname);
+    if (url.protocol !== 'https:' && !local) return null;
     return url.origin;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-
-/** Cloud configuration is deliberately optional; an incomplete setup is local-only. */
 export function getCloudConfig(): CloudConfig | null {
-  const url = configuredUrl(import.meta.env.WXT_SUPABASE_URL);
-  const publishableKey = import.meta.env.WXT_SUPABASE_PUBLISHABLE_KEY?.trim();
-  if (!url || !publishableKey) return null;
-  return { url, publishableKey };
+  const apiUrl = configuredUrl(import.meta.env.WXT_NEON_API_URL);
+  const siteUrl = configuredUrl(import.meta.env.WXT_SITE_URL);
+  return apiUrl && siteUrl ? { apiUrl, siteUrl } : null;
 }

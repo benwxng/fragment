@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "@refer/capture": "workspace:*",
-    "@refer/database": "workspace:^",
-    "@supabase/supabase-js": "2.116.0"
+    "@refer/database": "workspace:^"
   },
   "devDependencies": {
     "fake-indexeddb": "6.2.4",

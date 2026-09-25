@@ -7,7 +7,7 @@ export type ExtensionMessage =
   | { type: 'delete-reference'; id: string }
   | { type: 'open-library' }
   | { type: 'get-cloud-state' }
-  | { type: 'cloud-sign-in'; email: string; password: string }
+  | { type: 'cloud-sign-in' }
   | { type: 'cloud-sign-out' }
   | { type: 'sync-now' };
 

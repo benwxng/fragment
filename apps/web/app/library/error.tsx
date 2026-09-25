@@ -12,7 +12,7 @@ export default function LibraryError({ error, reset }: { error: Error & { digest
       <main className="state-main" id="main-content">
         <p className="eyebrow">Library unavailable</p>
         <h1>References could not be loaded.</h1>
-        <p className="lede">Check your connection and Supabase setup, then try again.</p>
+        <p className="lede">Check your connection and Neon setup, then try again.</p>
         <button className="button button-primary" type="button" onClick={reset}>Try again</button>
       </main>
     </div>

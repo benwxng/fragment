@@ -1,8 +1,9 @@
 # Refer — Design Inspector
 
-A private, cross-browser inspector and visual reference library for studying typography,
-components, color, and layout decisions on the web. It works locally without an
-account and can sync the same references to a private Supabase-backed web library.
+A cross-browser inspector and visual reference library for studying typography,
+components, color, and layout decisions on the web. Anyone can create an account;
+each user's curation stays private to that account. Refer also works locally before
+an account is connected.
 
 The product and technical plan is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -16,7 +17,7 @@ The end-to-end product is working:
 - click or Enter saves a cropped visual reference and structured snapshot locally;
 - the built-in library supports search, facet filters, detail view, source links,
   deletion, and undo.
-- the cloud-enabled packages sync to a live Supabase project with owner-only RLS;
+- the cloud-enabled packages sync to Neon Postgres and private object storage with per-user RLS;
 - the authenticated web library is deployed at
   [refer-design-library.vercel.app](https://refer-design-library.vercel.app).
 
@@ -95,64 +96,43 @@ and Mozilla Add-ons developer accounts, but unpacked development installation do
 
 ## Optional cloud sync
 
-This workspace is already linked to the free **Refer** project in the `artifacts`
-Supabase organization (`qagakeijiclubbyvggdq`). The ignored `.env.local` files contain
-only its browser-safe URL and publishable key. The database password is stored in the
-local macOS Keychain under service `Refer Supabase database`, account `refer`.
+This workspace is linked to Neon project `young-wildflower-24750720`, production.
+The schema, existing library, and screenshots have been migrated. See
+[Neon setup](docs/NEON_SETUP.md) for deployment, verification, and remaining Google
+OAuth configuration.
 
-Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide:
+Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide the
+public `WXT_NEON_API_URL` and `WXT_SITE_URL`. Rebuild the extension, open its account
+menu, and choose **Connect account**. Sign in on the website and approve the extension.
+Existing and future local references are queued and uploaded; failed work retries
+without blocking local saves.
 
-```bash
-WXT_SUPABASE_URL=https://your-project-ref.supabase.co
-WXT_SUPABASE_PUBLISHABLE_KEY=sb_publishable_replace_me
-```
+The first cloud sign-in permanently links that browser profile's local library to one
+account. Refer blocks a different account before processing the outbound queue or reading
+a reference payload, so account switching cannot leak the first user's local references.
+Use a separate browser profile for a different Refer account. A future explicit local-data
+reset/export flow can make deliberate switching possible without weakening this boundary.
 
-Apply the migrations in `supabase/migrations` first, create an email/password user in
-Supabase Auth, then rebuild the extension. Open **Cloud sync** from the library header
-to sign in. Existing and future local references are queued and uploaded; failed work
-retries without blocking local saves.
-
-The first cloud sign-in permanently links that browser profile's local library to the
-account. Refer blocks later accounts before processing the outbound queue or reading a
-reference payload, so a different account cannot silently receive the original account's
-local references.
-
-The publishable key is designed for browser clients and is constrained by RLS. Never
-put a Supabase secret or legacy `service_role` key in either environment variable.
+Only public API and website URLs belong in the extension environment. Database,
+object-storage, and cookie secrets stay on the server.
 
 ## Standalone web library
 
-The same cloud references are available in a responsive Next.js library. To preview
-the finished interface without an account, run `pnpm dev:web`, open
-`http://localhost:3000`, and choose **Explore the demo library**.
+Run `pnpm dev:web` and open `http://localhost:3000`. The demo library works without
+an account. Live data needs the four values in `apps/web/.env.example`: Neon Auth
+URL, a server-only cookie secret, API URL, and the canonical website URL.
 
-For live data, copy `apps/web/.env.example` to `apps/web/.env.local`, provide the same
-Supabase project URL and publishable key, and run:
+Existing Supabase passwords and sessions do not transfer. Sign in with Google using
+the same verified email, or create and verify a Neon email/password account with that
+email. The account mapping preserves the existing library and extension ownership.
 
 ```bash
+pnpm db:migrate
 pnpm build:web
 pnpm dev:web
 ```
 
-Before connecting either client, link a Supabase project and apply the checked-in
-migration:
-
-```bash
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase db push
-supabase migration list --linked
-supabase db lint --linked --level warning --fail-on error
-```
-
-Create the owner account in Supabase Auth (or use the web app's one-time sign-up), then
-disable public sign-ups for this personal deployment. Add the production web URL and
-`/auth/callback` URL to Supabase Auth's allowed redirect URLs before deploying to Vercel.
-
-Those production redirect URLs and the 5 MiB upload limit are already applied to the
-linked project. After creating your personal account at the deployed site, disable
-public sign-ups in Supabase to make it owner-only.
-
-Maintainers can run the disposable hosted-backend verification with `pnpm smoke:cloud`.
-It requires `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and a temporary admin
-`SUPABASE_SECRET_KEY`; the secret must never be written to either app environment file.
+`pnpm smoke:cloud` uses the ignored root `.env.local` to exercise real authentication,
+private storage, capture operations, extension sessions, and cross-user isolation.
+It creates and cleans up disposable users and data. Prefer an isolated Neon branch;
+see [Neon setup](docs/NEON_SETUP.md).

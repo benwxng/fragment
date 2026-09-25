@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 
 import { ConfigurationScreen } from '@/components/configuration';
-import { isSupabaseConfigured } from '@/lib/config';
+import { isNeonConfigured } from '@/lib/config';
 
 export default function HomePage() {
-  if (!isSupabaseConfigured()) return <ConfigurationScreen />;
+  if (!isNeonConfigured()) return <ConfigurationScreen />;
   redirect('/library');
 }

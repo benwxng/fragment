@@ -19,8 +19,8 @@ const broadOrigins = new Set(['<all_urls>', '*://*/*', 'http://*/*', 'https://*/
 
 function packageEnvironment() {
   const env = { ...process.env };
-  delete env.WXT_SUPABASE_URL;
-  delete env.WXT_SUPABASE_PUBLISHABLE_KEY;
+  delete env.WXT_NEON_API_URL;
+  delete env.WXT_SITE_URL;
   return env;
 }
 
@@ -48,18 +48,14 @@ async function releaseConfiguration() {
   const values = parseEnvironment(source);
   assert.deepEqual(
     Object.keys(values).sort(),
-    ['WXT_SUPABASE_PUBLISHABLE_KEY', 'WXT_SUPABASE_URL'],
-    'Extension release environment must contain only the two public Supabase values',
+    ['WXT_NEON_API_URL', 'WXT_SITE_URL'],
+    'Extension release environment must contain only the two public Neon/web URLs',
   );
-  const url = new URL(values.WXT_SUPABASE_URL);
-  assert.equal(url.protocol, 'https:', 'Release Supabase URL must use HTTPS');
-  assert.match(
-    values.WXT_SUPABASE_PUBLISHABLE_KEY,
-    /^sb_publishable_/u,
-    'Only a browser-safe Supabase publishable key may be packaged',
-  );
+  const url = new URL(values.WXT_NEON_API_URL);
+  assert.equal(url.protocol, 'https:', 'Release Neon API URL must use HTTPS');
+  assert.equal(new URL(values.WXT_SITE_URL).protocol, 'https:', 'Release website must use HTTPS');
   assert(!/service[_-]?role|secret/i.test(source), 'Secret/service-role material must not be packaged');
-  return { source, origin: url.origin, values };
+  return { source, origins: [url.origin, new URL(values.WXT_SITE_URL).origin], values };
 }
 
 function buildArchives(configuration) {
@@ -95,7 +91,7 @@ function assertCommonManifest(manifest, label, configuration) {
   assert.equal(manifest.version, version);
   assert(manifest.description.length <= 132, `${label}: description exceeds store limit`);
   assert(manifest.icons?.['128'], `${label}: missing 128px store icon`);
-  assert.deepEqual(manifest.permissions, expectedPermissions, `${label}: unexpected permissions`);
+  assert.deepEqual(manifest.permissions, configuration ? [...expectedPermissions, 'identity'] : expectedPermissions, `${label}: unexpected permissions`);
   const origins = [
     ...(manifest.host_permissions ?? []),
     ...(manifest.optional_host_permissions ?? []),
@@ -105,7 +101,7 @@ function assertCommonManifest(manifest, label, configuration) {
     false,
     `${label}: broad host access is forbidden`,
   );
-  assert.deepEqual(origins, configuration ? [`${configuration.origin}/*`] : []);
+  assert.deepEqual(origins, configuration ? [...new Set(configuration.origins)].map(origin => `${origin}/*`) : []);
   assert.equal(manifest.action?.default_title, 'Inspect this page');
   assert.equal(manifest.commands?.['toggle-inspector']?.suggested_key?.default, 'Alt+Shift+D');
   assert.equal(manifest.commands?.['toggle-inspector']?.suggested_key?.mac, 'MacCtrl+Shift+D');

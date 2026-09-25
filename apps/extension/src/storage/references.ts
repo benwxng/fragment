@@ -116,7 +116,7 @@ function openDatabase(): Promise<IDBDatabase> {
       'blocked',
       () => {
         databasePromise = undefined;
-        reject(new Error('Close other Refer tabs, then try again.'));
+        reject(new Error('Close other Glace tabs, then try again.'));
       },
       { once: true },
     );

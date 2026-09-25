@@ -12,9 +12,11 @@ function IconBase({ children, ...props }: IconProps) {
 
 export function MarkIcon(props: IconProps) {
   return (
-    <IconBase {...props}>
-      <path d="M4 3.5h8.1a3.4 3.4 0 0 1 0 6.8H4m6.7 0L16 16.5M4 3.5v13" />
-    </IconBase>
+    <svg aria-hidden="true" viewBox="0 0 100 42" fill="none" {...props}>
+<path d="M1.59026 20.0476C8.41761 25.6338 24.406 40.7329 49.5903 41C74.7745 40.7329 90.7629 25.6338 97.5903 20.0476C90.7157 14.5527 74.6184 1.07655 49.5903 1.00039C24.5621 1.07655 8.46478 14.5527 1.59026 20.0476Z" fill="white" stroke="white" strokeWidth="2"/>
+<circle cx="49.5903" cy="21" r="20" fill="#526B59"/>
+<path d="M49.5902 10.2V31.8M38.7902 21H60.3902M41.9535 13.3633L57.227 28.6368M41.9535 28.6368L57.227 13.3633" stroke="white" strokeWidth="2.4"/>
+    </svg>
   );
 }
 

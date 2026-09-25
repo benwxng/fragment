@@ -18,6 +18,7 @@ export function CaptureCard({ capture, demo = false }: CaptureCardProps) {
     '--specimen-color': capture.colors.text.startsWith('rgb') ? capture.colors.text : '#181916',
     '--specimen-bg': capture.colors.background.startsWith('rgb') ? capture.colors.background : '#fcfbf8',
     fontFamily: capture.fontFamily,
+    aspectRatio: `${capture.screenshotWidth} / ${capture.screenshotHeight}`,
   } as CSSProperties;
 
   return (
@@ -35,7 +36,6 @@ export function CaptureCard({ capture, demo = false }: CaptureCardProps) {
           ) : (
             <span className="card-specimen">{capture.textExcerpt || 'Aa'}</span>
           )}
-          <span className="media-meta">{capture.screenshotUrl ? 'Captured preview' : 'Type specimen'}</span>
         </span>
         <span className="card-body">
           <span className="card-meta">

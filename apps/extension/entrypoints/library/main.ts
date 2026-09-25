@@ -29,8 +29,6 @@ const accountCopy = requiredElement<HTMLParagraphElement>('account-copy');
 const accountFeedback = requiredElement<HTMLParagraphElement>('account-feedback');
 const signInForm = requiredElement<HTMLFormElement>('sign-in-form');
 const signInButton = requiredElement<HTMLButtonElement>('sign-in-button');
-const accountEmail = requiredElement<HTMLInputElement>('account-email');
-const accountPassword = requiredElement<HTMLInputElement>('account-password');
 const signedInPanel = requiredElement<HTMLDivElement>('signed-in-panel');
 const signedInEmail = requiredElement<HTMLParagraphElement>('signed-in-email');
 const syncDetail = requiredElement<HTMLParagraphElement>('sync-detail');
@@ -647,23 +645,16 @@ accountDialog.addEventListener('close', () => {
 accountDialog.addEventListener('click', (event) => {
   if (event.target === accountDialog) accountDialog.close();
 });
-signInForm.addEventListener('submit', (event) => {
+signInForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   signInButton.disabled = true;
-  accountFeedback.textContent = 'Signing in…';
-  void cloudRequest({
-    type: 'cloud-sign-in',
-    email: accountEmail.value,
-    password: accountPassword.value,
-  }).then(() => {
-    accountPassword.value = '';
+  accountFeedback.textContent = 'Complete sign-in in the browser window…';
+  try {
+    await cloudRequest({ type: 'cloud-sign-in' });
     accountFeedback.textContent = 'Signed in and syncing.';
-  }).catch((error) => {
+  } catch (error) {
     accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to sign in.';
-    accountPassword.select();
-  }).finally(() => {
-    signInButton.disabled = false;
-  });
+  } finally { signInButton.disabled = false; }
 });
 syncNowButton.addEventListener('click', () => {
   syncNowButton.disabled = true;
@@ -701,7 +692,7 @@ async function initialize(): Promise<void> {
     grid.hidden = true;
     emptyState.hidden = false;
     emptyTitle.textContent = 'Unable to open the library';
-    emptyCopy.textContent = 'Close other Refer tabs, reopen the library, and try again.';
+    emptyCopy.textContent = 'Close other Glace tabs, reopen the library, and try again.';
     clearFilters.hidden = true;
     count.textContent = 'Library unavailable';
     summary.textContent = 'Unable to load saved references.';
