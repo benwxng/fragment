@@ -53,3 +53,5 @@ export function formatCaptureDate(value: string): string {
 
 export const libraryFilters = [['all', 'All'], ['typography', 'Type'], ['component', 'Components'], ['color', 'Colors'], ['layout', 'Layout']] as const;
 export type LibraryFilter = typeof libraryFilters[number][0];
+
+export const libraryEmptyCopy = 'Use the Glance inspector to save a reference to your account. Your library is shared across the web and extension.';

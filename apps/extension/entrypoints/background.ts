@@ -1,12 +1,10 @@
-import { deleteReference, saveReference } from '../src/storage/references';
 import type { ExtensionMessage, ExtensionResponse } from '../src/messages';
 import {
   getCloudState,
-  isSyncAlarm,
+  deleteReference, saveReference, listReferences, importLegacyReferences,
   signIn,
   signOut,
-  syncNow,
-} from '../src/cloud/sync';
+} from '../src/cloud/library';
 
 const INSPECTOR_FILE = '/inspector.js';
 const ERROR_BADGE_DURATION_MS = 2_500;
@@ -67,14 +65,11 @@ async function handleMessage(
       }
 
       case 'save-reference':
-        await saveReference(message.reference);
-        void syncNow().catch(() => undefined);
-        return { ok: true, cloudState: await getCloudState() };
+        return { ok: true, userId: await saveReference(message.reference, message.expectedUserId) };
 
       case 'delete-reference':
-        await deleteReference(message.id);
-        void syncNow().catch(() => undefined);
-        return { ok: true, cloudState: await getCloudState() };
+        await deleteReference(message.id, message.expectedUserId);
+        return { ok: true };
 
       case 'open-library':
         await openLibrary();
@@ -89,8 +84,10 @@ async function handleMessage(
       case 'cloud-sign-out':
         return { ok: true, cloudState: await signOut() };
 
-      case 'sync-now':
-        return { ok: true, cloudState: await syncNow(true) };
+      case 'list-references':
+        return { ok: true, ...await listReferences() };
+      case 'import-legacy':
+        return { ok: true, imported: await importLegacyReferences() };
     }
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -119,11 +116,6 @@ export default defineBackground(() => {
     handleMessage(message as ExtensionMessage, sender),
   );
 
-  browser.alarms.onAlarm.addListener((alarm) => {
-    if (isSyncAlarm(alarm.name)) void syncNow().catch(() => undefined);
-  });
-
-  browser.runtime.onStartup.addListener(() => {
-    void syncNow().catch(() => undefined);
-  });
+  // Remove the previous offline-sync schedule when upgrading an installation.
+  void browser.alarms.clear('refer-cloud-sync');
 });

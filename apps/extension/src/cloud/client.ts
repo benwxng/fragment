@@ -18,18 +18,21 @@ async function storedSession(): Promise<Session | null> {
   }
   return value;
 }
-export function getCloudClient() {
+export function getCloudClient(sessionToken?: string) {
   const config = getCloudConfig();
   if (!config) return null;
   async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-    const session = token ? { token } : await storedSession();
+    const selectedToken = token ?? sessionToken;
+    const session = selectedToken ? { token: selectedToken } : await storedSession();
     const response = await fetch(new URL(path, config!.apiUrl), {
       ...options, signal: AbortSignal.timeout(30_000), credentials: 'omit', redirect: 'error',
       headers: { ...options.headers, ...(session ? { Authorization: `Bearer ${session.token}` } : {}) },
     });
     const result = await response.json();
     if (!response.ok) {
-      if (response.status === 401) await browser.storage.local.remove(SESSION_KEY);
+      if (response.status === 401 && (await storedSession())?.token === session?.token) {
+        await browser.storage.local.remove(SESSION_KEY);
+      }
       throw new CloudError(response.status, result.error ?? 'Unable to connect to your library.');
     }
     return result as T;
@@ -37,7 +40,7 @@ export function getCloudClient() {
   return {
     auth: {
       async getSession() {
-        if (!await storedSession()) return { data: { session: null }, error: null };
+        if (!sessionToken && !await storedSession()) return { data: { session: null }, error: null };
         try {
           const { user } = await request<{ user: User }>('/me');
           return { data: { session: { user } }, error: null };
@@ -66,9 +69,12 @@ export function getCloudClient() {
         return { data: { user }, error: null };
       },
       async signOut(_options?: { scope: string }) {
+        const session = await storedSession();
         try {
-          if (await storedSession()) await request('/extension/session',{ method:'DELETE' });
-        } finally { await browser.storage.local.remove(SESSION_KEY); }
+          if (session) await request('/extension/session',{ method:'DELETE' }, session.token);
+        } finally {
+          if (session && (await storedSession())?.token === session.token) await browser.storage.local.remove(SESSION_KEY);
+        }
         return { error:null };
       },
     },
@@ -86,7 +92,7 @@ export function getCloudClient() {
       return request<{ captures: RemoteCapture[]; complete: boolean; userId: string }>('/library-sync');
     },
     async downloadScreenshot(id: string, extension: string): Promise<string> {
-      const session = await storedSession();
+      const session = sessionToken ? { token: sessionToken } : await storedSession();
       if (!session) throw new Error('Sign in to sync your library.');
       const response = await fetch(new URL(`/screenshots/${encodeURIComponent(id)}.${extension}`, config.apiUrl), {
         signal: AbortSignal.timeout(30_000), credentials: 'omit', redirect: 'error', headers: { Authorization: `Bearer ${session.token}` },
@@ -102,4 +108,16 @@ export function getCloudClient() {
     },
     async deleteCapture(id: string) { await request(`/captures/${encodeURIComponent(id)}`, { method:'DELETE' }); },
   };
+}
+
+/** Pin every request in an operation to the account that started it. */
+export async function getAccountClient() {
+  const session = await storedSession();
+  if (!session) return null;
+  const client = getCloudClient(session.token);
+  if (!client) throw new Error('Account saving is not configured in this build.');
+  const { data, error } = await client.auth.getSession();
+  if (error instanceof CloudError && error.status === 401) return null;
+  if (error) throw error;
+  return data.session ? { client, user: data.session.user } : null;
 }

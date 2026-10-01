@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "wxt build -b chrome",
+    "build:local": "WXT_SITE_URL=http://localhost:3000 wxt build -b chrome",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip -b chrome",
     "zip:firefox": "wxt zip -b firefox",

@@ -1,33 +1,4 @@
-// Temporary comparison controls for choosing the inspector's save confirmation.
-const OPTIONS = [
-  ['badge', 'Corner'],
-  ['stamp', 'Inside'],
-] as const;
-type Treatment = typeof OPTIONS[number][0];
-
-export function createSaveFeedback(root: HTMLElement, getTarget: () => Element | null) {
-  const toolbar = document.createElement('aside');
-  toolbar.className = 'feedback-toolbar';
-  toolbar.setAttribute('aria-label', 'Save feedback previews');
-  const heading = document.createElement('strong');
-  heading.textContent = 'Save feedback';
-  const note = document.createElement('span');
-  note.className = 'feedback-note';
-  note.textContent = 'Temporary preview · Choose a style';
-  const choices = document.createElement('div');
-  choices.className = 'feedback-choices';
-  const status = document.createElement('span');
-  status.className = 'feedback-note';
-  status.textContent = 'Hover an element, then choose a style.';
-  status.setAttribute('role', 'status');
-  const replay = document.createElement('button');
-  replay.type = 'button';
-  replay.textContent = 'Replay preview';
-  toolbar.append(heading, note, choices, replay, status);
-  root.append(toolbar);
-
-  let selected: Treatment = 'badge';
-  let lastSaved: Element | null = null;
+export function createSaveFeedback(root: HTMLElement) {
   let feedback: HTMLDivElement | null = null;
   let frame = 0;
   let disposed = false;
@@ -44,7 +15,7 @@ export function createSaveFeedback(root: HTMLElement, getTarget: () => Element |
     if (disposed || !target.isConnected) return;
     clear();
     const overlay = document.createElement('div');
-    overlay.className = `save-feedback save-feedback-${selected}`;
+    overlay.className = 'save-feedback';
     overlay.setAttribute('aria-hidden', 'true');
     const badge = document.createElement('div');
     badge.className = 'save-confirmation';
@@ -56,11 +27,9 @@ export function createSaveFeedback(root: HTMLElement, getTarget: () => Element |
     path.setAttribute('pathLength', '1');
     check.append(path);
     badge.append(check);
-    if (selected === 'badge') {
-      const label = document.createElement('span');
-      label.textContent = 'Saved';
-      badge.append(label);
-    }
+    const label = document.createElement('span');
+    label.textContent = 'Saved';
+    badge.append(label);
     overlay.append(badge);
     root.append(overlay);
     feedback = overlay;
@@ -82,10 +51,10 @@ export function createSaveFeedback(root: HTMLElement, getTarget: () => Element |
         width: `${Math.max(0, right - left)}px`, height: `${Math.max(0, bottom - top)}px`,
       });
       // Keep the confirmation readable even on tiny text nodes and viewport edges.
-      const width = selected === 'badge' ? 76 : 32;
-      const height = selected === 'badge' ? 28 : 32;
-      const x = selected === 'badge' ? right - width - 8 : (left + right - width) / 2;
-      const y = selected === 'badge' ? top - height / 2 : (top + bottom - height) / 2;
+      const width = 76;
+      const height = 28;
+      const x = right - width - 8;
+      const y = top - height / 2;
       badge.style.left = `${Math.max(8, Math.min(x, innerWidth - width - 8))}px`;
       badge.style.top = `${Math.max(8, Math.min(y, innerHeight - height - 8))}px`;
       const elapsed = now - started;
@@ -102,43 +71,14 @@ export function createSaveFeedback(root: HTMLElement, getTarget: () => Element |
     }
   }
 
-  function preview() {
-    const target = lastSaved?.isConnected ? lastSaved : getTarget();
-    if (target) {
-      show(target);
-      status.textContent = 'Preview only · Nothing saved';
-    } else {
-      status.textContent = 'Hover an element first, then replay.';
-    }
-  }
-
-  for (const [value, label] of OPTIONS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = label;
-    button.dataset.treatment = value;
-    button.setAttribute('aria-pressed', String(value === selected));
-    button.addEventListener('click', () => {
-      selected = value;
-      for (const choice of choices.querySelectorAll('button')) {
-        choice.setAttribute('aria-pressed', String(choice === button));
-      }
-      preview();
-    });
-    choices.append(button);
-  }
-  replay.addEventListener('click', preview);
-
   return {
     saved(target: Element) {
-      lastSaved = target;
       show(target);
     },
     clear,
     dispose() {
       disposed = true;
       clear();
-      toolbar.remove();
     },
   };
 }

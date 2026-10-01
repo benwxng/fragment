@@ -1,8 +1,7 @@
-import { conciseElementLabel, formatCaptureDate, libraryFilters, type LibraryFilter } from '@refer/capture/presentation';
+import { conciseElementLabel, formatCaptureDate, libraryFilters, libraryEmptyCopy, type LibraryFilter } from '@refer/capture/presentation';
 import type { Reference } from '@refer/capture';
 import type { CloudState } from '../../src/cloud/types';
 import type { ExtensionMessage, ExtensionResponse } from '../../src/messages';
-import { listReferences } from '../../src/storage/references';
 
 type Filter = LibraryFilter;
 type UnknownRecord = Record<string, unknown>;
@@ -35,6 +34,7 @@ const signedInEmail = requiredElement<HTMLParagraphElement>('signed-in-email');
 const syncDetail = requiredElement<HTMLParagraphElement>('sync-detail');
 const syncNowButton = requiredElement<HTMLButtonElement>('sync-now');
 const signOutButton = requiredElement<HTMLButtonElement>('sign-out');
+const importButton = requiredElement<HTMLButtonElement>('import-legacy');
 
 let references: Reference[] = [];
 let activeFilter: Filter = 'all';
@@ -69,37 +69,28 @@ function renderCloudState(): void {
   signedInPanel.hidden = true;
 
   if (!state?.configured) {
-    accountButtonLabel.textContent = 'On this device';
-    accountCopy.textContent = 'Cloud sync is optional and is not configured in this build. Your library remains fully available on this device.';
+    accountButtonLabel.textContent = 'Account unavailable';
+    accountCopy.textContent = 'You can inspect any page. Saving requires an account-enabled build.';
     accountFeedback.textContent = '';
     return;
   }
 
   if (state.authStatus !== 'signed-in') {
-    accountButtonLabel.textContent = 'Sync off';
-    accountCopy.textContent = 'Sign in to securely sync this device’s references to your private library.';
+    accountButtonLabel.textContent = 'Sign in';
+    accountCopy.textContent = 'Sign in to save references and see the same library on the web and in Glance.';
     signInForm.hidden = false;
     return;
   }
 
-  accountButtonLabel.textContent = state.syncing
-    ? 'Syncing…'
-    : state.failed > 0
-      ? 'Sync issue'
-      : state.pending > 0
-        ? `${state.pending} pending`
-        : 'Synced';
-  accountCopy.textContent = 'Your account library is synced across the web and your extensions. Saved references are also available offline.';
+  accountButtonLabel.textContent = state.email ?? 'Account';
+  accountCopy.textContent = 'Your references are saved to your account and available in both libraries. An internet connection is required.';
   signedInPanel.hidden = false;
   signedInEmail.textContent = state.email ?? 'Signed in';
-  syncDetail.textContent = state.failed > 0
-    ? `${state.failed} ${state.failed === 1 ? 'item needs' : 'items need'} another try.`
-    : state.pending > 0
-      ? `${state.pending} ${state.pending === 1 ? 'reference is' : 'references are'} waiting to sync.`
-      : state.lastSyncedAt
-        ? `Last synced ${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(state.lastSyncedAt))}.`
-        : 'Ready to sync.';
-  accountFeedback.textContent = state.lastError ?? '';
+  importButton.hidden = state.legacyCount === 0;
+  importButton.textContent = `Import ${state.legacyCount} older saves`;
+  syncDetail.textContent = state.legacyBlocked
+    ? 'Older saves on this device belong to another account. Sign in to that account to import them.'
+    : state.legacyCount ? 'You have older device saves. Import them into this account to keep them in your library.' : '';
 }
 
 function asRecord(value: unknown): UnknownRecord | undefined {
@@ -406,6 +397,16 @@ function render(): void {
   emptyState.hidden = visible.length > 0;
   grid.hidden = visible.length === 0;
 
+  if (cloudState?.authStatus !== 'signed-in') {
+    grid.hidden = true;
+    emptyState.hidden = false;
+    emptyTitle.textContent = 'Sign in to your library';
+    emptyCopy.textContent = 'Inspect freely. Sign in to save references and access them anywhere.';
+    clearFilters.hidden = true;
+    count.textContent = 'Your library';
+    return;
+  }
+
   if (visible.length === 0 && filtering) {
     const query = search.value.trim();
     emptyTitle.textContent = query ? `No results for “${query}”` : `No ${activeFilter} references`;
@@ -413,7 +414,7 @@ function render(): void {
     clearFilters.hidden = false;
   } else if (visible.length === 0) {
     emptyTitle.textContent = 'No references yet';
-    emptyCopy.textContent = 'Start the inspector on any page, then select an element you want to remember.';
+    emptyCopy.textContent = libraryEmptyCopy;
     clearFilters.hidden = true;
   }
 }
@@ -542,10 +543,13 @@ function hideToast(): void {
 async function performDelete(): Promise<void> {
   const reference = selectedReference;
   if (!reference) return;
+  const owner = cloudState?.userId;
+  if (!owner) return;
 
   try {
-    const response = await sendExtensionMessage({ type: 'delete-reference', id: reference.id });
+    const response = await sendExtensionMessage({ type: 'delete-reference', id: reference.id, expectedUserId: owner });
     if (!response.ok) throw new Error(response.error);
+    if (cloudState?.userId !== owner) return;
     if (response.cloudState) {
       cloudState = response.cloudState;
       renderCloudState();
@@ -569,14 +573,17 @@ async function performDelete(): Promise<void> {
 async function undoLastDelete(): Promise<void> {
   const reference = pendingDeletion;
   if (!reference) return;
+  const owner = cloudState?.userId;
+  if (!owner) return;
   try {
-    const response = await sendExtensionMessage({ type: 'save-reference', reference });
+    const response = await sendExtensionMessage({ type: 'save-reference', reference, expectedUserId: owner });
     if (!response.ok) throw new Error(response.error);
+    if (cloudState?.userId !== owner) return;
     if (response.cloudState) {
       cloudState = response.cloudState;
       renderCloudState();
     }
-    references = [reference, ...references];
+    references = [reference, ...references.filter(item => item.id !== reference.id)];
     hideToast();
     render();
     summary.textContent = 'Reference restored.';
@@ -661,75 +668,103 @@ signInForm.addEventListener('submit', async (event) => {
   accountFeedback.textContent = 'Complete sign-in in the browser window…';
   try {
     await cloudRequest({ type: 'cloud-sign-in' });
-    accountFeedback.textContent = 'Signed in and syncing.';
+    await refreshLibrary();
+    accountFeedback.textContent = 'Signed in.';
   } catch (error) {
     accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to sign in.';
   } finally { signInButton.disabled = false; }
 });
-syncNowButton.addEventListener('click', () => {
+syncNowButton.addEventListener('click', async () => {
   syncNowButton.disabled = true;
-  accountFeedback.textContent = 'Syncing…';
-  void cloudRequest({ type: 'sync-now' }).then((state) => {
-    accountFeedback.textContent = state.lastError ?? (state.pending ? 'Some references are still pending.' : 'Everything is synced.');
-  }).catch((error) => {
-    accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to sync.';
-  }).finally(() => {
+  accountFeedback.textContent = 'Loading your library…';
+  try { await refreshLibrary(); accountFeedback.textContent = 'Library refreshed.'; }
+  catch (error) { accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to load your library.'; }
+  finally {
     syncNowButton.disabled = false;
-  });
+  }
 });
-signOutButton.addEventListener('click', () => {
+signOutButton.addEventListener('click', async () => {
   signOutButton.disabled = true;
   accountFeedback.textContent = 'Signing out…';
-  void cloudRequest({ type: 'cloud-sign-out' }).then(() => {
-    accountFeedback.textContent = 'Signed out. Local references are unchanged.';
-  }).catch((error) => {
-    accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to sign out.';
-  }).finally(() => {
-    signOutButton.disabled = false;
-  });
-});
-
-async function reloadLibrary(): Promise<void> {
-  references = await listReferences();
-  render();
-  if (selectedReference && detailDialog.open) {
-    const updated = references.find(reference => reference.id === selectedReference?.id);
-    if (!updated) detailDialog.close();
-  }
-}
-
-let refreshing = false;
-async function refreshLibrary(): Promise<void> {
-  if (refreshing || document.hidden) return;
-  refreshing = true;
-  try { await cloudRequest({ type: 'sync-now' }); }
-  catch { /* The offline cache stays usable; sync status reports failures. */ }
-  finally { refreshing = false; }
-}
-window.addEventListener('focus', () => { void refreshLibrary(); });
-window.addEventListener('online', () => { void refreshLibrary(); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshLibrary(); });
-browser.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes['refer-library-updated']) {
-    void reloadLibrary().catch(() => undefined);
-  }
-});
-
-async function initialize(): Promise<void> {
+  clearLibrary();
   try {
-    // Render cached data immediately, even when authentication/network is slow.
-    await reloadLibrary();
-    void refreshLibrary();
-  } catch {
-    grid.setAttribute('aria-busy', 'false');
-    grid.hidden = true;
-    emptyState.hidden = false;
-    emptyTitle.textContent = 'Unable to open the library';
-    emptyCopy.textContent = 'Close other Glance tabs, reopen the library, and try again.';
-    clearFilters.hidden = true;
-    count.textContent = 'Library unavailable';
-    summary.textContent = 'Unable to load saved references.';
+    await cloudRequest({ type: 'cloud-sign-out' });
+    render();
+    accountFeedback.textContent = 'Signed out. Your references remain in your account.';
+  } catch (error) {
+    accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to sign out.';
+  } finally {
+    signOutButton.disabled = false;
   }
+});
+
+let loadGeneration = 0;
+function clearLibrary(): void {
+  loadGeneration++;
+  references = [];
+  selectedReference = undefined;
+  pendingDeletion = undefined;
+  detailDialog.close();
+  confirmDialog.close();
+  hideToast();
+  grid.replaceChildren();
+  grid.setAttribute('aria-busy', 'false');
 }
 
-void initialize();
+async function refreshLibrary(): Promise<void> {
+  const generation = ++loadGeneration;
+  grid.setAttribute('aria-busy', 'true');
+  try {
+    const stateResponse = await sendExtensionMessage({ type: 'get-cloud-state' });
+    if (generation !== loadGeneration) return;
+    if (!stateResponse.ok) throw new Error(stateResponse.error);
+    const next = stateResponse.cloudState!;
+    if (cloudState?.userId !== next.userId) {
+      references = []; selectedReference = undefined; pendingDeletion = undefined;
+      detailDialog.close(); confirmDialog.close(); hideToast();
+    }
+    cloudState = next;
+    renderCloudState();
+    if (next.authStatus !== 'signed-in') { references = []; render(); return; }
+    const response = await sendExtensionMessage({ type: 'list-references' });
+    if (generation !== loadGeneration) return;
+    if (!response.ok) throw new Error(response.error);
+    if (response.userId !== next.userId) throw new Error('Your account changed. Refresh the library.');
+    references = response.references ?? [];
+    render();
+    if (selectedReference && !references.some(reference => reference.id === selectedReference?.id)) detailDialog.close();
+  } catch (error) {
+    if (generation !== loadGeneration) return;
+    clearLibrary();
+    render();
+    emptyTitle.textContent = 'Unable to load your library';
+    emptyCopy.textContent = error instanceof Error ? error.message : 'Check your connection and try again.';
+    throw error;
+  } finally { if (generation === loadGeneration) grid.setAttribute('aria-busy', 'false'); }
+}
+const refresh = () => { void refreshLibrary().catch(() => undefined); };
+window.addEventListener('focus', refresh);
+window.addEventListener('online', refresh);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+window.setInterval(() => { if (!document.hidden) refresh(); }, 60_000);
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes['refer-library-updated'] || changes['refer-neon-session'])) {
+    if (changes['refer-neon-session']) clearLibrary();
+    refresh();
+  }
+});
+
+importButton.addEventListener('click', async () => {
+  importButton.disabled = true;
+  accountFeedback.textContent = 'Importing older saves…';
+  try {
+    const response = await sendExtensionMessage({ type: 'import-legacy' });
+    if (!response.ok) throw new Error(response.error);
+    await refreshLibrary();
+    accountFeedback.textContent = 'Older saves are now in your account library.';
+  } catch (error) {
+    accountFeedback.textContent = `${error instanceof Error ? error.message : 'Import failed.'} Your older saves are preserved; you can retry.`;
+  } finally { importButton.disabled = false; }
+});
+
+refresh();

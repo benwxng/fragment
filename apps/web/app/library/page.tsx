@@ -1,4 +1,5 @@
 import { LibraryRefresh } from '@/components/library-refresh';
+import { libraryEmptyCopy } from '@refer/capture/presentation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -70,7 +71,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
             <p>
               {filtering
                 ? 'Try another search, or return to all references.'
-                : 'Start the inspector on any page, then select an element you want to remember.'}
+                : libraryEmptyCopy}
             </p>
             {filtering ? <Link className="text-link empty-action" href={demo ? '/library?demo=1' : '/library'}>Clear search and filters</Link> : null}
           </section>

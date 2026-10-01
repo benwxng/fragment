@@ -13,9 +13,9 @@ environment files, and `node_modules`.
 
 All build tools and dependencies are open-source packages downloaded through pnpm. The
 build does not use a web service. When present, `apps/extension/.env.local` contains only
-the public Supabase project URL and browser-safe publishable key compiled into the
-submitted build; it contains no secret or service-role credential. Its absence produces
-the fully local build.
+the public Neon API and sign-in website URLs compiled into the submitted build;
+it contains no secret credential. Its absence produces an inspection-only build:
+saving and viewing account references require the configured backend and sign-in.
 
 ## Reproduce the extension
 

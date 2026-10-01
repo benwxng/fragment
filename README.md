@@ -14,15 +14,16 @@ The end-to-end product is working:
 - one extension source builds for Chromium (including Arc) and Firefox;
 - toolbar or keyboard activation starts a style-isolated element inspector;
 - hover reveals typography, colors, box model, and layout properties;
-- click or Enter saves a cropped visual reference and structured snapshot locally;
+- click or Enter signs in if needed, then saves a cropped reference directly to the account;
 - the built-in library supports search, facet filters, detail view, source links,
   deletion, and undo.
-- the cloud-enabled packages sync to Neon Postgres and private object storage with per-user RLS;
+- saved references live in Neon Postgres and private object storage with per-user RLS;
 - the authenticated web library is deployed at
   [refer-design-library.vercel.app](https://refer-design-library.vercel.app).
 
-Cloud sync is available from the library's account menu. Without cloud environment
-variables, the same build remains completely local-only.
+Inspection is available without an account. Saving and browsing saved references
+require sign-in and an internet connection. Without account configuration, a build
+can inspect pages but cannot save references.
 
 ## Run it locally
 
@@ -78,8 +79,9 @@ pnpm zip:firefox
 ```
 
 `pnpm smoke:extension` launches Chromium with the built extension and verifies the
-real toolbar-action flow: active-tab injection, hover inspection, local screenshot
-save, library rendering, pointer and keyboard font previews, and Escape cleanup.
+real toolbar-action flow against an isolated local API fixture: active-tab injection,
+inspection without an account, cancelled sign-in, cloud save, library rendering,
+delete/undo, sign-out and account switching, no new IndexedDB, font previews, and cleanup.
 
 `pnpm smoke:firefox` builds the Firefox artifact, validates it with Mozilla's
 `web-ext`, and proves it installs as a temporary add-on in Firefox. Install the
@@ -94,7 +96,7 @@ store-install details.
 No Chrome DevTools account is required. Store publication requires Chrome Web Store
 and Mozilla Add-ons developer accounts, but unpacked development installation does not.
 
-## Optional cloud sync
+## Account library
 
 This workspace is linked to Neon project `young-wildflower-24750720`, production.
 The schema, existing library, and screenshots have been migrated. See
@@ -103,26 +105,27 @@ OAuth configuration.
 
 Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide the
 public `WXT_NEON_API_URL` and `WXT_SITE_URL`. Rebuild the extension, open its account
-menu, and choose **Connect account**. Sign in on the website and approve the extension.
-The account library is shared by the website and every connected extension. The
-extension keeps an IndexedDB cache, including image bytes, for offline use. It
-uploads queued local changes, then downloads the complete cloud library and
-reconciles remote edits/deletions without overwriting pending offline work.
-Sync runs on library open/focus, reconnect, manual sync, and a one-minute background
-alarm. The web gallery refreshes on focus/reconnect and every minute while visible.
-Images stay in private object storage; Postgres stores metadata and image paths.
+menu, and choose **Sign in or create account**. Sign in on the website and approve the extension.
 
-Revision checks keep stale local edits from overwriting newer cloud edits or
-recreating cloud-deleted captures. In a conflict, the cloud version wins. Explicit
-local deletion wins over remote edits; undo after a completed local deletion can
-recreate the reference. Failed or incomplete downloads preserve the previous offline
-cache and retry. Existing anonymous captures upload when the account is connected.
+When developing with `pnpm dev:web`, run `pnpm --filter @refer/extension build:local`
+to connect the unpacked Chrome extension through `http://localhost:3000`. This keeps
+the configured backend and saved data; it only changes the sign-in website. Keep
+the web server running, reload Glance in `chrome://extensions`, and reopen its
+library after rebuilding. Use the regular `pnpm build` for the hosted website.
 
-The first cloud sign-in permanently links that browser profile's local library to one
-account. Glance blocks a different account before processing the outbound queue or reading
-a reference payload, so account switching cannot leak the first user's local references.
-Use a separate browser profile for a different Glance account. A future explicit local-data
-reset/export flow can make deliberate switching possible without weakening this boundary.
+The website and extension read the same account library. Saves and deletes go
+directly to the backend; failed requests display an error rather than creating
+offline work. Both galleries refresh on focus/reconnect and every minute while
+visible. Images stay in private object storage; Postgres stores metadata and paths.
+The extension keeps displayed references only in page memory and clears them on
+sign-out or account changes. No new IndexedDB library or sync queue is created.
+
+Existing installations can choose **Import older saves** in the account menu.
+The migration reads old IndexedDB data without modifying the backup, skips existing
+cloud references and previously uploaded cache rows, and records successful imports
+so retries do not duplicate them. Older account-owned saves can only be imported
+by their original account. Anonymous imports bind to the account that starts the
+import. This migration is the sole remaining IndexedDB consumer.
 
 Only public API and website URLs belong in the extension environment. Database,
 object-storage, and cookie secrets stay on the server.

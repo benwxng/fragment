@@ -469,11 +469,12 @@ export function bootstrapInspector(): void {
   let pendingPoint = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   let lastPointer = pendingPoint;
   let lastSavedId: string | null = null;
+  let lastSavedUserId: string | undefined;
   let retryTarget: Element | null = null;
   const childTrail = new WeakMap<Element, Element>();
   const cleanups: Array<() => void> = [];
   const restoreCursor = installCursor(host);
-  const saveFeedback = createSaveFeedback(ui.root, () => target);
+  const saveFeedback = createSaveFeedback(ui.root);
 
   function listen(
     eventTarget: EventTarget,
@@ -548,23 +549,19 @@ export function bootstrapInspector(): void {
         { ...reference, facets: inferFacets(reference.element) },
         crop,
       );
+      restoreEditableContent();
       const response = await sendMessage({ type: 'save-reference', reference: capturedReference });
       if (!response.ok) throw new Error(response.error);
 
       lastSavedId = capturedReference.id;
+      lastSavedUserId = response.userId;
       retryTarget = null;
-      const message = response.cloudState?.configured
-        ? response.cloudState.authStatus === 'signed-in'
-          ? 'Saved · Syncing'
-          : 'Saved on this device'
-        : 'Saved';
+      const message = 'Saved to your library';
       showToast('saved', message);
       if (active) saveFeedback.saved(elementToSave);
     } catch (error) {
       const message =
-        error instanceof Error && error.message.startsWith('Move the element')
-          ? error.message
-          : 'Unable to save. Try again.';
+        error instanceof Error ? error.message : 'Unable to save. Check your connection and try again.';
       showToast('error', message);
     } finally {
       restoreEditableContent();
@@ -709,7 +706,7 @@ export function bootstrapInspector(): void {
     if (!lastSavedId) return;
     const id = lastSavedId;
     ui.undoButton.disabled = true;
-    void sendMessage({ type: 'delete-reference', id })
+    void sendMessage({ type: 'delete-reference', id, expectedUserId: lastSavedUserId })
       .then((response) => {
         if (!response.ok) throw new Error(response.error);
         if (lastSavedId === id) lastSavedId = null;

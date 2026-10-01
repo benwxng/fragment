@@ -19,7 +19,7 @@
         <p class="library-count" id="library-count">Loading library…</p>
         <button class="account-button" id="account-button" type="button" aria-haspopup="dialog" aria-expanded="false">
           <span class="account-dot" aria-hidden="true"></span>
-          <span id="account-button-label">On this device</span>
+          <span id="account-button-label">Account</span>
         </button>
       </div>
     </header>
@@ -83,12 +83,12 @@
         <button class="icon-button account-close" id="account-close" type="button" aria-label="Close account settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
         </button>
-        <p class="eyebrow">Cloud sync</p>
+        <p class="eyebrow">Your account</p>
         <h2 id="account-title">Keep your references with you.</h2>
-        <p class="account-copy" id="account-copy">Checking cloud availability…</p>
+        <p class="account-copy" id="account-copy">Checking your account…</p>
 
         <form class="sign-in-form" id="sign-in-form" hidden>
-          <button class="button button-primary" id="sign-in-button" type="submit">Connect your account</button>
+          <button class="button button-primary" id="sign-in-button" type="submit">Sign in or create account</button>
           <p>Sign in with Google or email in the web library.</p>
         </form>
 
@@ -96,7 +96,8 @@
           <p class="signed-in-email" id="signed-in-email"></p>
           <p class="sync-detail" id="sync-detail"></p>
           <div class="dialog-actions">
-            <button class="button button-primary" id="sync-now" type="button">Sync now</button>
+            <button class="button button-primary" id="import-legacy" type="button" hidden>Import older saves</button>
+            <button class="button button-secondary" id="sync-now" type="button">Refresh library</button>
             <button class="button button-secondary" id="sign-out" type="button">Sign out</button>
           </div>
         </div>

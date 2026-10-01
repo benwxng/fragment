@@ -13,10 +13,10 @@ const fixturePath = join(repoRoot, 'fixtures/inspector-playground.html');
 const hostSelector = '#__refer_design_inspector__';
 const browserExecutable = process.env.REFER_BROWSER_EXECUTABLE?.trim();
 
-function buildLocalExtension() {
+function buildLocalExtension(origin) {
   const env = { ...process.env };
-  env.WXT_NEON_API_URL = 'local-only';
-  env.WXT_SITE_URL = 'local-only';
+  env.WXT_NEON_API_URL = origin;
+  env.WXT_SITE_URL = origin;
   execFileSync('pnpm', ['--filter', '@refer/extension', 'build'], {
     cwd: repoRoot,
     env,
@@ -38,14 +38,44 @@ async function validateManifest() {
   );
   assert.deepEqual(
     manifest.permissions,
-    ['activeTab', 'alarms', 'scripting', 'storage'],
+    ['activeTab', 'alarms', 'scripting', 'storage', 'identity'],
     'Unexpected extension permissions',
   );
 }
 
 async function serveFixture() {
   const html = await readFile(fixturePath);
-  const server = createServer((request, response) => {
+  const captures = new Map();
+  const images = new Map();
+  const userId = '018f37b2-a1f0-7d8c-9b1e-9ca6155c8bc9';
+  const server = createServer(async (request, response) => {
+    const path = new URL(request.url, 'http://localhost').pathname;
+    const json = (value, status = 200) => { response.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(value)); };
+    const otherAccount = request.headers.authorization === 'Bearer other-test-session';
+    const accountId = otherAccount ? '018f37b2-a1f0-7d8c-9b1e-9ca6155c8bc8' : userId;
+    if (path === '/me') return json({ user: { id: accountId, email: otherAccount ? 'other@example.com' : 'fixture@example.com' } });
+    if (path === '/library-sync') return json({ userId: accountId, complete: true, captures: otherAccount ? [] : [...captures.values()] });
+    if (path === '/extension/session') return json({ ok: true });
+    if (path.startsWith('/screenshots/')) {
+      if (request.method === 'PUT') {
+        const chunks = [];
+        for await (const chunk of request) chunks.push(chunk);
+        images.set(path, Buffer.concat(chunks));
+        return json({ path: `${userId}/${path.split('/').pop()}` });
+      }
+      response.writeHead(200, { 'Content-Type': 'image/png' }).end(images.get(path));
+      return;
+    }
+    if (path.startsWith('/captures/')) {
+      const id = path.split('/').pop();
+      if (request.method === 'DELETE') { captures.delete(id); return json({ ok: true }); }
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const row = JSON.parse(Buffer.concat(chunks).toString());
+      if (captures.has(id)) return json({ error: 'Already saved' }, 409);
+      captures.set(id, { ...row, sync_revision: 'fixture-revision' });
+      return json({ revision: 'fixture-revision' });
+    }
     if (request.url !== '/' && request.url !== '/inspector-playground.html') {
       response.writeHead(404).end('Not found');
       return;
@@ -64,6 +94,8 @@ async function serveFixture() {
   assert(address && typeof address === 'object');
   return {
     url: `http://127.0.0.1:${address.port}/inspector-playground.html`,
+    origin: `http://127.0.0.1:${address.port}`,
+    captures,
     close: () => new Promise((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
     }),
@@ -71,10 +103,9 @@ async function serveFixture() {
 }
 
 async function main() {
-  buildLocalExtension();
-  await validateManifest();
-
   const fixture = await serveFixture();
+  buildLocalExtension(fixture.origin);
+  await validateManifest();
   const profilePath = await mkdtemp(join(tmpdir(), 'refer-smoke-'));
   let context;
 
@@ -94,6 +125,7 @@ async function main() {
       ],
     });
 
+    context.setDefaultTimeout(10_000);
     let [worker] = context.serviceWorkers();
     worker ??= await context.waitForEvent('serviceworker', { timeout: 15_000 });
     const extensionId = new URL(worker.url()).host;
@@ -127,10 +159,23 @@ async function main() {
     assert.match(hudText ?? '', /article/i, 'HUD did not identify the hovered element');
     assert.match(hudText ?? '', /TypeInter16 px/i, 'HUD did not render typography details');
 
-    await target.click({ position: cardPaddingPoint });
     const toast = host.locator('.toast');
+    // Cancelled sign-in must leave both the cloud and device empty.
+    await worker.evaluate(() => { chrome.identity.launchWebAuthFlow = async () => undefined; });
+    await target.click({ position: cardPaddingPoint });
     await toast.waitFor({ state: 'visible', timeout: 10_000 });
+    assert.match((await toast.textContent()) ?? '', /cancelled/i);
+    assert.equal(fixture.captures.size, 0);
+    assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
+
+    await worker.evaluate(() => chrome.storage.local.set({ 'refer-neon-session': {
+      token: 'isolated-test-session', expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    } }));
+    await host.locator('button.retry').click();
+    await page.waitForFunction(() => document.querySelector('#__refer_design_inspector__')?.shadowRoot?.querySelector('.toast')?.textContent?.includes('Saved to your library'));
     assert.match((await toast.textContent()) ?? '', /Saved/i);
+    assert.equal(fixture.captures.size, 1);
+    assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
 
     const libraryOpened = context.waitForEvent('page', { timeout: 5_000 });
     await host.locator('button.view').click();
@@ -162,6 +207,28 @@ async function main() {
     await fontPreviewTrigger.focus();
     await fontPreview.waitFor({ state: 'visible', timeout: 5_000 });
 
+    await library.locator('.card-open').click();
+    await library.locator('.button-delete').click();
+    await library.locator('#confirm-delete').click();
+    await library.locator('#undo-delete').waitFor({ state: 'visible' });
+    assert.equal(fixture.captures.size, 0);
+    await library.locator('#undo-delete').click();
+    await library.locator('.reference-card').waitFor({ state: 'visible' });
+    assert.equal(fixture.captures.size, 1);
+    await library.locator('#account-button').click();
+    await library.locator('#sign-out').click();
+    await library.waitForFunction(() => document.querySelector('#account-button-label')?.textContent === 'Sign in');
+    assert.equal(await library.locator('.reference-card').count(), 0);
+    assert.equal(fixture.captures.size, 1);
+    assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
+
+    await worker.evaluate(() => chrome.storage.local.set({ 'refer-neon-session': {
+      token: 'other-test-session', expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    } }));
+    await library.waitForFunction(() => document.querySelector('#account-button-label')?.textContent === 'other@example.com');
+    assert.equal(await library.locator('.reference-card').count(), 0);
+    assert.equal(fixture.captures.size, 1);
+
     await page.bringToFront();
     await page.keyboard.press('Escape');
     await host.waitFor({ state: 'detached', timeout: 5_000 });
@@ -171,8 +238,8 @@ async function main() {
       'Refer extension smoke test passed.',
       `  browser: ${browserExecutable || 'Playwright Chrome for Testing'}`,
       `  extension: ${extensionId}`,
-      '  verified: real toolbar-action activeTab injection, registered shortcut, hover HUD, click save, screenshot-backed local library, pointer + keyboard font preview, cleanup',
-      '  permissions: activeTab, alarms, scripting, storage (no broad host access)',
+      '  verified: inspection without an account, cancelled sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, font previews, cleanup',
+      '  backend: isolated local fixture; no production accounts or data used',
       '',
     ].join('\n'));
   } finally {
