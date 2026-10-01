@@ -7,6 +7,10 @@ import {
 } from '@refer/database';
 import {
   completeSyncJob,
+  acknowledgeUpload,
+  acknowledgeDeletion,
+  getCloudRevision,
+  reconcileCloudLibrary,
   claimSyncOwner,
   failSyncJob,
   getReference,
@@ -14,7 +18,7 @@ import {
   listReadySyncJobs,
   type SyncJob,
 } from '../storage/references';
-import { getCloudClient } from './client';
+import { CloudError, getCloudClient } from './client';
 import type { CloudState } from './types';
 
 const META_STORAGE_KEY = 'refer-cloud-sync-meta';
@@ -91,7 +95,7 @@ async function uploadReference(job: SyncJob, userId: string, reference: Referenc
   if (!client) throw new Error('Cloud sync is not configured.');
   const storagePath = screenshotPath(userId, reference);
 
-  if (storagePath && reference.screenshot?.dataUrl) {
+  if (storagePath && reference.screenshot?.dataUrl && reference.screenshot.storagePath !== storagePath) {
     await client.uploadScreenshot(reference.id, dataUrlToBlob(reference.screenshot.dataUrl), reference.screenshot.mimeType === 'image/png' ? 'png' : 'webp');
   }
 
@@ -116,8 +120,8 @@ async function uploadReference(job: SyncJob, userId: string, reference: Referenc
     collection_id: reference.collectionId,
     captured_at: reference.capturedAt,
   } satisfies CaptureInsert;
-  await client.upsertCapture(row);
-  await completeSyncJob(job.referenceId, job.token);
+  const result = await client.upsertCapture(row, await getCloudRevision(reference.id));
+  await acknowledgeUpload(job.referenceId, job.token, result.revision);
 }
 
 async function deleteRemoteReference(job: SyncJob, userId: string): Promise<void> {
@@ -125,17 +129,56 @@ async function deleteRemoteReference(job: SyncJob, userId: string): Promise<void
   if (!client) throw new Error('Cloud sync is not configured.');
 
   await client.deleteCapture(job.referenceId);
-  await completeSyncJob(job.referenceId, job.token);
+  await acknowledgeDeletion(job.referenceId, job.token);
 }
 
 async function scheduleRetry(): Promise<void> {
   const summary = await getSyncQueueSummary();
-  if (!summary.pending || !summary.nextAttemptAt) {
-    await browser.alarms.clear(RETRY_ALARM);
-    return;
-  }
-  const scheduled = Math.max(Date.now() + 1_000, Date.parse(summary.nextAttemptAt));
+  // Keep pulling even when there is no outbound work (web/other-device changes).
+  const nextPull = Date.now() + 60_000;
+  const scheduled = summary.pending && summary.nextAttemptAt
+    ? Math.min(nextPull, Math.max(Date.now() + 1_000, Date.parse(summary.nextAttemptAt)))
+    : nextPull;
   await browser.alarms.create(RETRY_ALARM, { when: scheduled });
+}
+
+async function pullLibrary(userId: string): Promise<void> {
+  const client = getCloudClient()!;
+  const result = await client.listLibrary();
+  if (result.complete !== true || result.userId !== userId || !Array.isArray(result.captures)) {
+    throw new Error('Incomplete cloud library response. Your offline library has been preserved.');
+  }
+  const cloud = [];
+  const ids = new Set<string>();
+  for (const row of result.captures) {
+    const snapshot = row.snapshot as unknown as Reference;
+    if (row.user_id !== userId || !row.id || ids.has(row.id) || !row.sync_revision
+      || !snapshot?.element || !snapshot.source || snapshot.snapshotVersion !== 1) {
+      throw new Error('Invalid cloud reference. Your offline library has been preserved.');
+    }
+    ids.add(row.id);
+    const local = await getReference(row.id);
+    const revision = await getCloudRevision(row.id);
+    let screenshot = snapshot.screenshot;
+    if (row.screenshot_path) {
+      const extension = row.screenshot_path.endsWith('.png') ? 'png' : 'webp';
+      const dataUrl = local?.screenshot?.dataUrl && revision === row.sync_revision
+        ? local.screenshot.dataUrl
+        : await client.downloadScreenshot(row.id, extension);
+      screenshot = { dataUrl, storagePath: row.screenshot_path, mimeType: `image/${extension}`,
+        width: screenshot?.width ?? 4, height: screenshot?.height ?? 3 };
+    }
+    cloud.push({ revision: row.sync_revision, reference: {
+      ...snapshot, id: row.id, capturedAt: row.captured_at, facets: row.facets,
+      element: { ...snapshot.element, semantic: { ...snapshot.element.semantic,
+        accessibleName: row.element_label || snapshot.element.semantic?.accessibleName || '',
+      } },
+      source: { ...snapshot.source, url: row.source_url, origin: row.source_origin, title: row.page_title },
+      note: row.note, favorite: row.favorite, collectionId: row.collection_id, screenshot,
+    } as Reference });
+  }
+  await reconcileCloudLibrary(userId, cloud);
+  await browser.storage.local.set({ 'refer-library-updated': crypto.randomUUID() });
 }
 
 export async function getCloudState(): Promise<CloudState> {
@@ -175,7 +218,10 @@ async function runSync(force: boolean): Promise<CloudState> {
     await scheduleRetry();
     return getCloudState();
   }
-  if (!data.session) return getCloudState();
+  if (!data.session) {
+    await browser.alarms.clear(RETRY_ALARM);
+    return getCloudState();
+  }
 
   const startingMeta = await getMeta();
   const ownership = await claimSyncOwner(data.session.user.id, startingMeta.seededUserId);
@@ -209,16 +255,26 @@ async function runSync(force: boolean): Promise<CloudState> {
           else await completeSyncJob(job.referenceId, job.token);
         }
       } catch (jobError) {
+        if (jobError instanceof CloudError && jobError.status === 409) {
+          failure = 'A reference changed elsewhere. The cloud version was kept.';
+          await completeSyncJob(job.referenceId, job.token);
+          continue;
+        }
         failure = messageFrom(jobError);
         await failSyncJob(job.referenceId, job.token, failure);
         break;
       }
     }
 
+    try {
+      await pullLibrary(data.session.user.id);
+    } catch (pullError) {
+      failure = messageFrom(pullError);
+    }
     const currentMeta = await getMeta();
     const meta = {
       ...currentMeta,
-      lastSyncedAt: failure ? currentMeta.lastSyncedAt : new Date().toISOString(),
+      lastSyncedAt: failure || (await getSyncQueueSummary()).pending ? currentMeta.lastSyncedAt : new Date().toISOString(),
       lastError: failure,
     } satisfies SyncMeta;
     await setMeta(meta);

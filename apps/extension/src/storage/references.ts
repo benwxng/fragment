@@ -116,7 +116,7 @@ function openDatabase(): Promise<IDBDatabase> {
       'blocked',
       () => {
         databasePromise = undefined;
-        reject(new Error('Close other Glace tabs, then try again.'));
+        reject(new Error('Close other Glance tabs, then try again.'));
       },
       { once: true },
     );
@@ -326,4 +326,68 @@ export async function getSyncQueueSummary(): Promise<SyncQueueSummary> {
     failed: jobs.filter((job) => job.attempts > 0).length,
     nextAttemptAt,
   };
+}
+
+export interface CloudReference { reference: Reference; revision: string }
+
+export async function getCloudRevision(id: string): Promise<string | null> {
+  const database = await openDatabase();
+  const transaction = database.transaction(SYNC_META_STORE, 'readonly');
+  const done = transactionDone(transaction);
+  const record = await requestResult(transaction.objectStore(SYNC_META_STORE).get(`revision:${id}`));
+  await done;
+  return record?.revision ?? null;
+}
+
+/** Remember the server acknowledgement even if a newer local edit is queued. */
+export async function acknowledgeUpload(id: string, token: string, revision: string): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction([SYNC_META_STORE, SYNC_JOBS_STORE], 'readwrite');
+  const done = transactionDone(transaction);
+  transaction.objectStore(SYNC_META_STORE).put({ key: `revision:${id}`, revision });
+  const jobs = transaction.objectStore(SYNC_JOBS_STORE);
+  const current = await requestResult(jobs.get(id)) as SyncJob | undefined;
+  if (current?.token === token) jobs.delete(id);
+  await done;
+}
+
+/** Apply a complete cloud snapshot atomically, preserving every pending local mutation. */
+export async function reconcileCloudLibrary(userId: string, cloud: CloudReference[]): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction([REFERENCES_STORE, SYNC_JOBS_STORE, SYNC_META_STORE], 'readwrite');
+  const done = transactionDone(transaction);
+  const metadata = transaction.objectStore(SYNC_META_STORE);
+  const owner = await requestResult(metadata.get(CLOUD_OWNER_KEY)) as SyncOwnerRecord | undefined;
+  if (owner?.userId !== userId) {
+    await done;
+    throw new Error('The cloud library belongs to another account.');
+  }
+  const references = transaction.objectStore(REFERENCES_STORE);
+  const jobs = await requestResult(transaction.objectStore(SYNC_JOBS_STORE).getAll()) as SyncJob[];
+  const pending = new Set(jobs.map(job => job.referenceId));
+  const localIds = await requestResult(references.getAllKeys());
+  const cloudIds = new Set(cloud.map(item => item.reference.id));
+  for (const id of localIds) {
+    if (!pending.has(String(id)) && !cloudIds.has(String(id))) {
+      references.delete(id);
+      metadata.delete(`revision:${id}`);
+    }
+  }
+  for (const { reference, revision } of cloud) {
+    if (pending.has(reference.id)) continue;
+    references.put(reference);
+    metadata.put({ key: `revision:${reference.id}`, revision });
+  }
+  await done;
+}
+
+export async function acknowledgeDeletion(id: string, token: string): Promise<void> {
+  const database = await openDatabase();
+  const transaction = database.transaction([SYNC_META_STORE, SYNC_JOBS_STORE], 'readwrite');
+  const done = transactionDone(transaction);
+  transaction.objectStore(SYNC_META_STORE).delete(`revision:${id}`);
+  const jobs = transaction.objectStore(SYNC_JOBS_STORE);
+  const current = await requestResult(jobs.get(id)) as SyncJob | undefined;
+  if (current?.token === token) jobs.delete(id);
+  await done;
 }

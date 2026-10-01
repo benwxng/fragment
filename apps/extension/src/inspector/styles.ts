@@ -45,7 +45,7 @@ export const inspectorStyles = String.raw`
     position: fixed;
     z-index: 0;
     border: 1px solid var(--refer-accent);
-    border-radius: 3px;
+    border-radius: 2px;
     background: rgba(166, 244, 197, 0.08);
     box-shadow:
       0 0 0 1px rgba(23, 24, 22, 0.38),
@@ -81,7 +81,7 @@ export const inspectorStyles = String.raw`
     align-items: center;
     gap: 6px;
     padding: 4px 4px 4px 12px;
-    border-radius: 18px;
+    border-radius: 14px;
     transform: translateX(-50%);
     pointer-events: auto;
     white-space: nowrap;
@@ -108,7 +108,7 @@ export const inspectorStyles = String.raw`
     min-inline-size: 32px;
     min-block-size: 28px;
     border: 0;
-    border-radius: 14px;
+    border-radius: 10px;
     color: inherit;
     background: var(--refer-panel-raised);
     font: inherit;
@@ -137,7 +137,7 @@ export const inspectorStyles = String.raw`
     max-block-size: calc(100vh - 24px);
     overflow: auto;
     overscroll-behavior: contain;
-    border-radius: 14px;
+    border-radius: 10px;
     pointer-events: auto;
     scrollbar-width: thin;
   }
@@ -244,7 +244,7 @@ export const inspectorStyles = String.raw`
     inline-size: 10px;
     block-size: 10px;
     flex: 0 0 auto;
-    border-radius: 3px;
+    border-radius: 2px;
     outline: 1px solid rgba(255, 255, 255, 0.22);
     outline-offset: 0;
   }
@@ -274,7 +274,7 @@ export const inspectorStyles = String.raw`
     align-items: center;
     gap: 4px;
     padding: 4px 5px 4px 14px;
-    border-radius: 22px;
+    border-radius: 18px;
     transform: translateX(-50%);
     pointer-events: auto;
     white-space: nowrap;
@@ -296,7 +296,7 @@ export const inspectorStyles = String.raw`
   .toast button {
     min-block-size: 34px;
     padding-inline: 10px;
-    border-radius: 17px;
+    border-radius: 13px;
     color: var(--refer-muted);
     font-size: 12px;
   }
@@ -322,7 +322,7 @@ export const inspectorStyles = String.raw`
     gap: 9px;
     width: min(292px, calc(100vw - 32px));
     padding: 14px;
-    border-radius: 16px;
+    border-radius: 12px;
     background: var(--refer-panel);
     box-shadow: 0 12px 40px #0004, inset 0 0 0 1px var(--refer-line);
     pointer-events: auto;
@@ -330,14 +330,14 @@ export const inspectorStyles = String.raw`
   .feedback-toolbar strong { font-size: 13px; }
   .feedback-note { color: var(--refer-muted); font-size: 10px; }
   .feedback-choices { display: flex; gap: 4px; }
-  .feedback-toolbar button { padding: 8px; border-radius: 8px; font-size: 10px; }
+  .feedback-toolbar button { padding: 8px; border-radius: 4px; font-size: 10px; }
   .feedback-choices button { flex: 1; }
   .feedback-choices button[aria-pressed="true"] { color: #153524; background: var(--refer-accent); }
   .save-feedback {
     position: fixed;
     z-index: 5;
     pointer-events: none;
-    border-radius: 5px;
+    border-radius: 2px;
   }
   .save-confirmation {
     position: fixed;
@@ -348,7 +348,7 @@ export const inspectorStyles = String.raw`
     width: 76px;
     height: 28px;
     border: 1px solid rgb(255 255 255 / 0.16);
-    border-radius: 8px;
+    border-radius: 4px;
     background: #202521;
     color: #f0f5f1;
     font-size: 11px;

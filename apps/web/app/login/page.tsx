@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { AppHeader } from '@/components/app-header';
 import { GlaceAnimation } from '@/components/glace-animation';
 import { AuthForm } from '@/components/auth-form';
 import { ConfigurationScreen } from '@/components/configuration';
@@ -22,7 +21,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="auth-page">
-      <AppHeader />
       <main className="auth-main auth-main-with-art" id="main-content">
         <GlaceAnimation />
         <section className="auth-card" aria-labelledby="auth-title">
@@ -31,8 +29,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <Link className={mode === 'signup' ? 'is-active' : ''} href={`/login?mode=signup&returnTo=${encodeURIComponent(returnTo)}`}>Create account</Link>
           </div>
           <div className="auth-heading">
-            <h1 id="auth-title">{mode === 'signin' ? 'Welcome back' : 'Create your library'}</h1>
-            <p>{mode === 'signin' ? 'Sign in with the account connected to the extension.' : 'Use the same account in the extension to sync captures.'}</p>
+            {(['signin', 'signup'] as const).map((headingMode) => (
+              <div className="auth-heading-copy" data-active={mode === headingMode} aria-hidden={mode !== headingMode} key={headingMode}>
+                <h1 id={mode === headingMode ? 'auth-title' : undefined}>{headingMode === 'signin' ? 'Welcome back' : 'Create your library'}</h1>
+                <p>{headingMode === 'signin' ? 'Sign in with the account connected to the extension.' : 'Use the same account in the extension to sync captures.'}</p>
+              </div>
+            ))}
           </div>
           {parameters.authError ? (
             <p className="auth-route-error" role="alert">Unable to confirm your email. Request a new confirmation link and try again.</p>

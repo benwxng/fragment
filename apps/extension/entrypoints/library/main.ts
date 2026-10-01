@@ -1,9 +1,10 @@
+import { conciseElementLabel, formatCaptureDate, libraryFilters, type LibraryFilter } from '@refer/capture/presentation';
 import type { Reference } from '@refer/capture';
 import type { CloudState } from '../../src/cloud/types';
 import type { ExtensionMessage, ExtensionResponse } from '../../src/messages';
 import { listReferences } from '../../src/storage/references';
 
-type Filter = 'all' | 'typography' | 'component';
+type Filter = LibraryFilter;
 type UnknownRecord = Record<string, unknown>;
 
 const grid = requiredElement<HTMLDivElement>('reference-grid');
@@ -88,7 +89,7 @@ function renderCloudState(): void {
       : state.pending > 0
         ? `${state.pending} pending`
         : 'Synced';
-  accountCopy.textContent = 'Cloud sync is connected. New captures stay on this device first, then upload in the background.';
+  accountCopy.textContent = 'Your account library is synced across the web and your extensions. Saved references are also available offline.';
   signedInPanel.hidden = false;
   signedInEmail.textContent = state.email ?? 'Signed in';
   syncDetail.textContent = state.failed > 0
@@ -184,11 +185,13 @@ function elementLabel(reference: Reference): string {
   const semanticName = stringValue(reference, [['element', 'semantic', 'accessibleName']]);
   const excerpt = capturedText(reference);
   const tagName = stringValue(reference, [['element', 'semantic', 'tagName']]);
-  return stringValue(
+  const rawLabel = stringValue(
     reference,
     [['element', 'label'], ['elementLabel']],
     semanticName || excerpt || (tagName ? `${tagName.toLocaleLowerCase()} element` : 'Saved element'),
   );
+  const role = stringValue(reference, [['element', 'semantic', 'role']], tagName);
+  return conciseElementLabel(rawLabel, role, tagName);
 }
 
 function capturedText(reference: Reference): string {
@@ -240,13 +243,7 @@ function screenshot(reference: Reference): string | undefined {
 }
 
 function captureDate(reference: Reference): string {
-  const date = new Date(reference.capturedAt);
-  if (Number.isNaN(date.getTime())) return 'Date unavailable';
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
-  }).format(date);
+  return formatCaptureDate(reference.capturedAt);
 }
 
 function pluralize(value: number, singular: string, plural = `${singular}s`): string {
@@ -300,6 +297,13 @@ function createCard(reference: Reference): HTMLElement {
   const media = document.createElement('span');
   media.className = 'card-media';
   const imageUrl = screenshot(reference);
+  const width = Number(valueAt(reference, ['screenshot', 'width']));
+  const height = Number(valueAt(reference, ['screenshot', 'height']));
+  media.style.aspectRatio = Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 ? `${width} / ${height}` : '4 / 3';
+  const textColor = stringValue(reference, [['element', 'colors', 'text']]);
+  const background = stringValue(reference, [['element', 'colors', 'effectiveBackground'], ['element', 'colors', 'background']]);
+  card.style.setProperty('--specimen-color', textColor.startsWith('rgb') ? textColor : '#181916');
+  card.style.setProperty('--specimen-bg', background.startsWith('rgb') ? background : '#fcfbf8');
   if (imageUrl) {
     const image = document.createElement('img');
     image.src = imageUrl;
@@ -314,11 +318,6 @@ function createCard(reference: Reference): HTMLElement {
     specimen.style.fontFamily = fontFamily(reference);
     media.append(specimen);
   }
-
-  const mediaMeta = document.createElement('span');
-  mediaMeta.className = 'media-meta';
-  mediaMeta.textContent = imageUrl ? 'Captured preview' : 'Type specimen';
-  media.append(mediaMeta);
 
   const body = document.createElement('span');
   body.className = 'card-body';
@@ -586,11 +585,22 @@ async function undoLastDelete(): Promise<void> {
   }
 }
 
+const filters = document.querySelector('.filters')!;
+for (const [value, label] of libraryFilters) {
+  const button = document.createElement('button');
+  button.className = `filter${value === 'all' ? ' is-active' : ''}`;
+  button.type = 'button';
+  button.dataset.filter = value;
+  button.setAttribute('aria-pressed', String(value === 'all'));
+  button.textContent = label;
+  filters.append(button);
+}
+
 document.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((button) => {
   button.addEventListener('click', () => {
     const filter = button.dataset.filter;
-    if (filter !== 'all' && filter !== 'typography' && filter !== 'component') return;
-    activeFilter = filter;
+    if (!libraryFilters.some(([value]) => value === filter)) return;
+    activeFilter = filter as Filter;
     document.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((candidate) => {
       const selected = candidate === button;
       candidate.classList.toggle('is-active', selected);
@@ -679,20 +689,43 @@ signOutButton.addEventListener('click', () => {
   });
 });
 
+async function reloadLibrary(): Promise<void> {
+  references = await listReferences();
+  render();
+  if (selectedReference && detailDialog.open) {
+    const updated = references.find(reference => reference.id === selectedReference?.id);
+    if (!updated) detailDialog.close();
+  }
+}
+
+let refreshing = false;
+async function refreshLibrary(): Promise<void> {
+  if (refreshing || document.hidden) return;
+  refreshing = true;
+  try { await cloudRequest({ type: 'sync-now' }); }
+  catch { /* The offline cache stays usable; sync status reports failures. */ }
+  finally { refreshing = false; }
+}
+window.addEventListener('focus', () => { void refreshLibrary(); });
+window.addEventListener('online', () => { void refreshLibrary(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshLibrary(); });
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes['refer-library-updated']) {
+    void reloadLibrary().catch(() => undefined);
+  }
+});
+
 async function initialize(): Promise<void> {
   try {
-    const [savedReferences] = await Promise.all([
-      listReferences(),
-      cloudRequest({ type: 'get-cloud-state' }).catch(() => undefined),
-    ]);
-    references = savedReferences;
-    render();
+    // Render cached data immediately, even when authentication/network is slow.
+    await reloadLibrary();
+    void refreshLibrary();
   } catch {
     grid.setAttribute('aria-busy', 'false');
     grid.hidden = true;
     emptyState.hidden = false;
     emptyTitle.textContent = 'Unable to open the library';
-    emptyCopy.textContent = 'Close other Glace tabs, reopen the library, and try again.';
+    emptyCopy.textContent = 'Close other Glance tabs, reopen the library, and try again.';
     clearFilters.hidden = true;
     count.textContent = 'Library unavailable';
     summary.textContent = 'Unable to load saved references.';

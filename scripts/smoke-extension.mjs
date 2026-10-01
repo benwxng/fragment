@@ -140,6 +140,14 @@ async function main() {
     await library.locator('.reference-card').waitFor({ state: 'visible', timeout: 5_000 });
     assert.match((await library.locator('#library-count').textContent()) ?? '', /1 reference/);
     assert.equal(await library.locator('.card-media > img').count(), 1);
+    assert.equal(await library.locator('.card-title').textContent(), 'Article');
+    assert.equal(await library.locator('.media-meta').count(), 0);
+    assert.deepEqual(await library.locator('[data-filter]').allTextContents(), ['All', 'Type', 'Components', 'Colors', 'Layout']);
+    assert.equal(await library.locator('.card-media').evaluate((element) => getComputedStyle(element).borderRadius), '0px');
+    await library.locator('[data-filter=layout]').click();
+    assert.equal(await library.locator('[data-filter=layout]').getAttribute('aria-pressed'), 'true');
+    await library.locator('[data-filter=all]').click();
+    await library.locator('.reference-card').waitFor({ state: 'visible' });
 
     const fontPreviewTrigger = library.locator('.font-preview-trigger');
     const fontPreview = library.locator('.font-preview-popover');

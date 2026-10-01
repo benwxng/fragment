@@ -124,3 +124,28 @@ source export/keys, direct destination credentials, object-storage credentials,
 and `MIGRATION_SUPABASE_URL`. It inserts missing rows without overwriting existing
 ones and verifies copied objects. It is not continuous replication. The old
 `pnpm smoke:cloud:legacy` command is retained only for the Supabase fallback.
+
+## Shared account library (September 30, 2026)
+
+`GET /library-sync` returns an explicitly complete, account-scoped snapshot and
+lossless Postgres revision strings. It is never limited to the first 500 records.
+Extensions reconcile only after validating and downloading the entire response.
+`GET /screenshots/:id.png|webp` returns image bytes through the authenticated API,
+so no additional storage-origin extension permissions are necessary. Capture
+images are immutable once referenced by a cloud row.
+
+Extension writes include `base_revision`: null means create-only, a revision means
+update-only if that revision still exists. Conflicts return 409 and keep the cloud
+version; older API consumers remain compatible. No schema migration is required.
+The extension preserves pending jobs during cache reconciliation and checks account
+ownership in the same IndexedDB transaction that updates cached references.
+
+Run the real two-profile browser test on the existing isolated test branch:
+
+```sh
+VERIFY_EXTENSION_SYNC=1 node --env-file=output/migration/test.env scripts/smoke-neon.mjs
+```
+
+This adds fresh-device hydration, cached offline images, offline capture upload,
+second-device propagation, and remote deletion checks. It uses disposable accounts
+and restores the configured production extension build afterward.

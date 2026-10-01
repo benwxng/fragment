@@ -21,9 +21,9 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
     callback.searchParams.set('state',params.state ?? '');
     redirect(callback.href);
   }
-  return <main className="auth-main"><section className="auth-card"><h1>Connect Glace</h1>
-    <p>Allow the Glace extension to sync captures and screenshots with the library for {data.user.email}?</p>
-    <p>Only continue if you started this from your Glace extension.</p>
+  return <main className="auth-main"><section className="auth-card"><h1>Connect Glance</h1>
+    <p>Allow the Glance extension to sync captures and screenshots with the library for {data.user.email}?</p>
+    <p>Only continue if you started this from your Glance extension.</p>
     <form action={connect}><button className="button button-primary">Connect extension</button></form>
   </section></main>;
 }

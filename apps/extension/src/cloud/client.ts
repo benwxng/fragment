@@ -1,5 +1,9 @@
-import type { CaptureInsert } from '@refer/database';
+import type { CaptureInsert, CaptureRow } from '@refer/database';
 import { getCloudConfig } from './config';
+export class CloudError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+export type RemoteCapture = CaptureRow & { sync_revision: string };
 const SESSION_KEY = 'refer-neon-session';
 interface Session { token: string; expiresAt: string }
 interface User { id: string; email: string }
@@ -20,13 +24,13 @@ export function getCloudClient() {
   async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
     const session = token ? { token } : await storedSession();
     const response = await fetch(new URL(path, config!.apiUrl), {
-      ...options, credentials: 'omit', redirect: 'error',
+      ...options, signal: AbortSignal.timeout(30_000), credentials: 'omit', redirect: 'error',
       headers: { ...options.headers, ...(session ? { Authorization: `Bearer ${session.token}` } : {}) },
     });
     const result = await response.json();
     if (!response.ok) {
       if (response.status === 401) await browser.storage.local.remove(SESSION_KEY);
-      throw new Error(result.error ?? 'Unable to connect to your library.');
+      throw new CloudError(response.status, result.error ?? 'Unable to connect to your library.');
     }
     return result as T;
   }
@@ -73,10 +77,28 @@ export function getCloudClient() {
         method:'PUT', headers:{ 'Content-Type':blob.type }, body:blob,
       });
     },
-    async upsertCapture(row: CaptureInsert) {
-      await request(`/captures/${encodeURIComponent(row.id!)}`,{
-        method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(row),
+    async upsertCapture(row: CaptureInsert, baseRevision: string | null) {
+      return request<{ revision: string }>(`/captures/${encodeURIComponent(row.id!)}`,{
+        method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ ...row, base_revision: baseRevision }),
       });
+    },
+    async listLibrary() {
+      return request<{ captures: RemoteCapture[]; complete: boolean; userId: string }>('/library-sync');
+    },
+    async downloadScreenshot(id: string, extension: string): Promise<string> {
+      const session = await storedSession();
+      if (!session) throw new Error('Sign in to sync your library.');
+      const response = await fetch(new URL(`/screenshots/${encodeURIComponent(id)}.${extension}`, config.apiUrl), {
+        signal: AbortSignal.timeout(30_000), credentials: 'omit', redirect: 'error', headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (!response.ok) throw new CloudError(response.status, 'Unable to download a saved image.');
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.length > 5 * 1024 * 1024) throw new Error('Saved image exceeds the supported size.');
+      let binary = '';
+      for (let offset = 0; offset < bytes.length; offset += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+      }
+      return `data:image/${extension};base64,${btoa(binary)}`;
     },
     async deleteCapture(id: string) { await request(`/captures/${encodeURIComponent(id)}`, { method:'DELETE' }); },
   };

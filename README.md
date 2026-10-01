@@ -1,8 +1,8 @@
-# Refer — Design Inspector
+# Glance — Design Inspector
 
 A cross-browser inspector and visual reference library for studying typography,
 components, color, and layout decisions on the web. Anyone can create an account;
-each user's curation stays private to that account. Refer also works locally before
+each user's curation stays private to that account. Glance also works locally before
 an account is connected.
 
 The product and technical plan is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -51,14 +51,14 @@ and select `apps/extension/.output/firefox-mv3/manifest.json`.
 
 ## Use it
 
-1. Select the Refer toolbar icon, or press `Alt+Shift+D` (`Control+Shift+D` on macOS).
+1. Select the Glance toolbar icon, or press `Alt+Shift+D` (`Control+Shift+D` on macOS).
 2. Hover any page element to inspect its design properties.
 3. Click the highlighted element or press Enter to save it.
 4. Use **View references** in the confirmation, or open the extension's library from
    its command/action menu.
 5. Press Escape to leave inspection mode. `↑` selects the parent element; `↓` returns to the previous child.
 
-Refer deliberately requests no persistent access to every website. Activation grants
+Glance deliberately requests no persistent access to every website. Activation grants
 temporary access only to the active tab. Saved URLs have query strings and fragments
 removed; editable/form content is excluded from captured text and concealed in screenshots.
 
@@ -104,13 +104,24 @@ OAuth configuration.
 Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide the
 public `WXT_NEON_API_URL` and `WXT_SITE_URL`. Rebuild the extension, open its account
 menu, and choose **Connect account**. Sign in on the website and approve the extension.
-Existing and future local references are queued and uploaded; failed work retries
-without blocking local saves.
+The account library is shared by the website and every connected extension. The
+extension keeps an IndexedDB cache, including image bytes, for offline use. It
+uploads queued local changes, then downloads the complete cloud library and
+reconciles remote edits/deletions without overwriting pending offline work.
+Sync runs on library open/focus, reconnect, manual sync, and a one-minute background
+alarm. The web gallery refreshes on focus/reconnect and every minute while visible.
+Images stay in private object storage; Postgres stores metadata and image paths.
+
+Revision checks keep stale local edits from overwriting newer cloud edits or
+recreating cloud-deleted captures. In a conflict, the cloud version wins. Explicit
+local deletion wins over remote edits; undo after a completed local deletion can
+recreate the reference. Failed or incomplete downloads preserve the previous offline
+cache and retry. Existing anonymous captures upload when the account is connected.
 
 The first cloud sign-in permanently links that browser profile's local library to one
-account. Refer blocks a different account before processing the outbound queue or reading
+account. Glance blocks a different account before processing the outbound queue or reading
 a reference payload, so account switching cannot leak the first user's local references.
-Use a separate browser profile for a different Refer account. A future explicit local-data
+Use a separate browser profile for a different Glance account. A future explicit local-data
 reset/export flow can make deliberate switching possible without weakening this boundary.
 
 Only public API and website URLs belong in the extension environment. Database,

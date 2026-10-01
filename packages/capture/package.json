@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./presentation": "./src/presentation.ts",
+    "./library.css": "./src/library.css"
   },
   "scripts": {
     "test": "vitest run",
@@ -15,4 +17,3 @@
     "vitest": "^3.2.4"
   }
 }
-

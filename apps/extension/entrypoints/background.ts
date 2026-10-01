@@ -21,7 +21,7 @@ async function showActionError(tabId: number, message: string): Promise<void> {
     browser.action.setBadgeText({ tabId, text: '!' }),
     browser.action.setTitle({
       tabId,
-      title: `Glace cannot inspect this page: ${message}`,
+      title: `Glance cannot inspect this page: ${message}`,
     }),
   ]);
 

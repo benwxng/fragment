@@ -55,8 +55,16 @@ async function handle(request: Request): Promise<Response> {
     await pool.query('delete from private.extension_sessions where token_hash=$1', [hash(request.headers.get('authorization')!.slice(7))]);
     return json({ ok: true });
   }
+  // A single SQL snapshot is complete: clients may reconcile deletions only after
+  // receiving this explicit marker. Never truncate this response.
+  if (path === '/library-sync' && request.method === 'GET') {
+    const captures = await asOwner(user.id, async db => (await db.query(
+      'select *, updated_at::text as sync_revision from public.captures order by captured_at desc, id',
+    )).rows);
+    return json({ captures, complete: true, userId: user.id });
+  }
   if (path === '/captures' && request.method === 'GET') {
-    const rows = await asOwner(user.id, async db => (await db.query('select * from public.captures order by captured_at desc limit 500')).rows);
+    const rows = await asOwner(user.id, async db => (await db.query('select * from public.captures order by captured_at desc, id')).rows);
     const captures = await Promise.all(rows.map(async row => ({ ...row, screenshot_url: row.screenshot_path
       ? await getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: row.screenshot_path }), { expiresIn: 3600 }) : null })));
     return json({ captures });
@@ -88,10 +96,24 @@ async function handle(request: Request): Promise<Response> {
       const values = [id,user.id,body.facets,body.source_url,body.source_origin,body.page_title??'',body.element_label??'',
         body.primary_font_family??null,body.text_color??null,body.background_color??null,body.screenshot_path??null,
         body.snapshot_version??1,JSON.stringify(body.snapshot),body.note??null,body.favorite??false,body.collection_id??null,body.captured_at??new Date().toISOString()];
-      await asOwner(user.id, db => db.query(`insert into public.captures(${columns.join(',')})
-        values(${values.map((_,i)=>`$${i+1}`).join(',')}) on conflict(id) do update set
-        ${columns.slice(2).map(c=>`${c}=excluded.${c}`).join(',')}`, values));
-      return json({ ok: true });
+      const guarded = Object.hasOwn(body, 'base_revision');
+      if (guarded && body.base_revision !== null && typeof body.base_revision !== 'string') {
+        throw new HttpError(400, 'Invalid library revision.');
+      }
+      const revision = await asOwner(user.id, async db => {
+        const result = guarded && body.base_revision !== null
+          ? await db.query(`update public.captures set
+              ${columns.slice(2).map((c, i) => `${c}=$${i+3}`).join(',')}
+              where id=$1 and user_id=$2 and updated_at=$${values.length+1}::timestamptz
+              returning updated_at::text as revision`, [...values, body.base_revision])
+          : await db.query(`insert into public.captures(${columns.join(',')})
+              values(${values.map((_,i)=>`$${i+1}`).join(',')}) on conflict(id)
+              ${guarded ? 'do nothing' : `do update set ${columns.slice(2).map(c=>`${c}=excluded.${c}`).join(',')}`}
+              returning updated_at::text as revision`, values);
+        if (!result.rows[0]) throw new HttpError(409, 'This reference changed in your cloud library. The cloud version will be kept.');
+        return result.rows[0].revision;
+      });
+      return json({ ok: true, revision });
     }
     if (request.method === 'DELETE') {
       // Owner-derived keys also clean up uploads from an interrupted sync.
@@ -101,6 +123,17 @@ async function handle(request: Request): Promise<Response> {
     }
   }
   const uploadMatch = /^\/screenshots\/([^/]+)\.(png|webp)$/.exec(path);
+  if (uploadMatch && request.method === 'GET') {
+    const Key = screenshotKey(user.id, uploadMatch[1], uploadMatch[2]);
+    const owned = await asOwner(user.id, async db => (await db.query(
+      'select id from public.captures where id=$1 and screenshot_path=$2', [uploadMatch[1], Key],
+    )).rows[0]);
+    if (!owned) throw new HttpError(404, 'Screenshot not found.');
+    const object = await s3.send(new GetObjectCommand({ Bucket, Key }));
+    return new Response(new Uint8Array(await object.Body!.transformToByteArray()).buffer, {
+      headers: { 'Content-Type': `image/${uploadMatch[2]}`, 'Cache-Control': 'no-store' },
+    });
+  }
   if (uploadMatch && request.method === 'PUT') {
     const Key = screenshotKey(user.id, uploadMatch[1], uploadMatch[2]);
     const contentType = `image/${uploadMatch[2]}`;
@@ -110,6 +143,12 @@ async function handle(request: Request): Promise<Response> {
       ? Buffer.from(bytes.slice(0,8)).equals(Buffer.from([137,80,78,71,13,10,26,10]))
       : new TextDecoder().decode(bytes.slice(0,4)) === 'RIFF' && new TextDecoder().decode(bytes.slice(8,12)) === 'WEBP';
     if (!valid) throw new HttpError(400, 'Invalid image.');
+    // A capture's image is immutable. Retried/stale devices must not replace
+    // the cloud image before their metadata revision check runs.
+    const existing = await asOwner(user.id, async db => (await db.query(
+      'select id from public.captures where id=$1 and screenshot_path=$2', [uploadMatch[1], Key],
+    )).rows[0]);
+    if (existing) return json({ path: Key });
     await s3.send(new PutObjectCommand({ Bucket, Key, Body: bytes, ContentType: contentType, CacheControl: 'private, max-age=3600' }));
     return json({ path: Key });
   }

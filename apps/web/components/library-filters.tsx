@@ -1,14 +1,7 @@
+import { libraryFilters } from '@refer/capture/presentation';
 import Link from 'next/link';
 
 import { SearchIcon, SlidersIcon } from '@/components/icons';
-
-const filters = [
-  ['all', 'All'],
-  ['typography', 'Type'],
-  ['component', 'Components'],
-  ['color', 'Colors'],
-  ['layout', 'Layout'],
-] as const;
 
 export function LibraryFilters({ query, facet, demo }: { query: string; facet: string; demo: boolean }) {
   return (
@@ -29,7 +22,7 @@ export function LibraryFilters({ query, facet, demo }: { query: string; facet: s
       </form>
       <nav className="filters" aria-label="Reference facets">
         <SlidersIcon className="filter-icon" />
-        {filters.map(([value, label]) => {
+        {libraryFilters.map(([value, label]) => {
           const parameters = new URLSearchParams();
           if (query) parameters.set('q', query);
           if (value !== 'all') parameters.set('facet', value);

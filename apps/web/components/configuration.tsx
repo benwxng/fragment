@@ -10,7 +10,7 @@ export function ConfigurationScreen() {
         <p className="eyebrow">One-time setup</p>
         <h1>Connect your private library.</h1>
         <p className="lede">
-          Glace is ready. Add your Neon Auth URL, cookie secret, and API URL to enable sign-in and cloud references.
+          Glance is ready. Add your Neon Auth URL, cookie secret, and API URL to enable sign-in and cloud references.
         </p>
         <section className="setup-card" aria-labelledby="setup-title">
           <div>

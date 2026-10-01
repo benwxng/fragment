@@ -9,7 +9,6 @@ export function GlaceAnimation() {
   const playerRef = useRef<Rive | null>(null);
   const [reducedMotion, setReducedMotion] = useState(true);
   const [ready, setReady] = useState(false);
-  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -68,13 +67,13 @@ export function GlaceAnimation() {
   useEffect(() => {
     if (!ready) return;
     const update = () => {
-      if (paused || reducedMotion || document.hidden) playerRef.current?.pause();
+      if (reducedMotion || document.hidden) playerRef.current?.pause();
       else playerRef.current?.play();
     };
     update();
     document.addEventListener('visibilitychange', update);
     return () => document.removeEventListener('visibilitychange', update);
-  }, [paused, ready, reducedMotion]);
+  }, [ready, reducedMotion]);
 
   return (
     <div className="auth-art">
@@ -83,14 +82,9 @@ export function GlaceAnimation() {
         <canvas ref={canvasRef} className="auth-eye-canvas" hidden={!ready || reducedMotion} />
       </div>
       <div className="auth-art-caption">
-        <p className="auth-art-name">Glace</p>
+        <p className="auth-art-name">Glance</p>
         <p>Keep what catches your eye.</p>
       </div>
-      {ready && !reducedMotion ? (
-        <button className="auth-animation-control" type="button" onClick={() => setPaused(value => !value)}>
-          {paused ? 'Play animation' : 'Pause animation'}
-        </button>
-      ) : null}
     </div>
   );
 }

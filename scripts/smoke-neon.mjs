@@ -60,7 +60,7 @@ try {
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
   const upload=await fetch(new URL(`/screenshots/${id}.png`,base),{method:'PUT',headers:{Authorization:`Bearer ${a.token}`,'Content-Type':'image/png'},body:png});
   assert.equal(upload.status,200,await upload.text());
-  const row={id,user_id:a.user.id,facets:['typography'],source_url:'https://example.com',source_origin:'https://example.com',snapshot:{id,snapshotVersion:1},screenshot_path:`${a.user.id}/${id}.png`};
+  const row={id,user_id:a.user.id,facets:['typography'],source_url:'https://example.com',source_origin:'https://example.com',snapshot:{id,snapshotVersion:1,capturedAt:new Date().toISOString(),facets:['typography'],source:{url:'https://example.com',origin:'https://example.com',title:'Sync fixture'},element:{semantic:{tagName:'p',accessibleName:'Shared reference'},textExcerpt:'Offline reference',typography:{primaryFontFamily:'Inter',fontFamily:'Inter'},colors:{text:'rgb(0, 0, 0)',effectiveBackground:'rgb(255, 255, 255)'}},screenshot:{dataUrl:null,storagePath:null,mimeType:'image/png',width:1,height:1},note:null,tags:[],favorite:false,collectionId:null},screenshot_path:`${a.user.id}/${id}.png`};
   assert.equal((await call(`/captures/${id}`,a.token,'PUT',row)).status,200);
   let result=await call(`/captures/${id}`,a.token);
   assert.equal(result.status,200);
@@ -76,6 +76,37 @@ try {
   assert.equal((await call(`/captures/${id}`,b.token,'DELETE')).status,200);
   assert.equal((await call(`/captures/${id}`,a.token)).status,200);
   console.log('PASS capture save/read/update isolation and private screenshot upload/download');
+  const sync = await call('/library-sync', a.token);
+  assert.equal(sync.status, 200);
+  assert.equal(sync.body.complete, true);
+  assert.equal(sync.body.userId, a.user.id);
+  const revision = sync.body.captures.find(capture => capture.id === id).sync_revision;
+  assert(revision);
+  assert.deepEqual((await call('/library-sync', b.token)).body.captures, []);
+  assert.equal((await call('/library-sync')).status, 401);
+  const offlineImage = await fetch(new URL(`/screenshots/${id}.png`, base), { headers: { Authorization: `Bearer ${a.token}` } });
+  assert.equal(offlineImage.status, 200);
+  assert.deepEqual(Buffer.from(await offlineImage.arrayBuffer()), png);
+  assert.equal((await fetch(new URL(`/screenshots/${id}.png`, base), { headers: { Authorization: `Bearer ${b.token}` } })).status, 404);
+  const edited = await call(`/captures/${id}`, a.token, 'PUT', { ...row, note: 'new cloud note', base_revision: revision });
+  assert.equal(edited.status, 200, JSON.stringify(edited.body));
+  assert.notEqual(edited.body.revision, revision);
+  assert.equal((await call(`/captures/${id}`, a.token, 'PUT', { ...row, note: 'stale', base_revision: revision })).status, 409);
+  assert.equal((await call(`/captures/${id}`, a.token, 'PUT', { ...row, base_revision: null })).status, 409);
+  assert.equal((await call(`/captures/${id}`, a.token)).body.capture.note, 'new cloud note');
+  // A complete snapshot must include references beyond the former 500-row cutoff.
+  await db.query(`insert into public.captures(id,user_id,facets,source_url,source_origin,snapshot)
+    select gen_random_uuid(),$1,ARRAY['typography'],'https://example.com','https://example.com','{}'::jsonb
+    from generate_series(1,501)`, [a.user.id]);
+  assert.equal((await call('/library-sync', a.token)).body.captures.length, 502);
+  assert.equal((await call('/captures', a.token)).body.captures.length, 502);
+  await db.query('delete from public.captures where user_id=$1 and id<>$2', [a.user.id, id]);
+  console.log('PASS complete library snapshot, offline image download, account isolation, and stale-write rejection');
+  if (process.env.VERIFY_EXTENSION_SYNC === '1') {
+    const { verifyLibrarySync } = await import('./verify-library-sync.mjs');
+    await verifyLibrarySync({ base, token: a.token, row, png });
+  }
+
   const verifier=randomBytes(32).toString('base64url');
   const challenge=createHash('sha256').update(verifier).digest('base64url');
   const redirectUri='https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.chromiumapp.org/';
@@ -99,6 +130,10 @@ try {
   await db.query('rollback');
   await call(`/captures/${id}`,a.token,'DELETE');
   assert.equal((await call(`/captures/${id}`,a.token)).status,404);
+  assert.deepEqual((await call('/library-sync', a.token)).body.captures, []);
+  assert.equal((await call(`/captures/${id}`, a.token, 'PUT', { ...row, base_revision: edited.body.revision })).status, 409);
+  assert.equal((await call(`/captures/${id}`, a.token)).status, 404);
+
   assert.notEqual((await fetch(result.body.capture.screenshot_url)).status,200);
   console.log('PASS database RLS and capture/screenshot deletion');
   const signout=await fetch(`${auth}/sign-out`,{method:'POST',headers:{cookie:a.cookie,origin:'http://localhost:3000','Content-Type':'application/json'},body:'{}'});

@@ -5,7 +5,7 @@ export default function LibraryLoading() {
     <div className="library-page">
       <AppHeader />
       <main className="library-main" id="main-content" aria-busy="true">
-        <div className="loading-library-title" aria-hidden="true"><span /></div>
+        <h1 className="visually-hidden">Saved references</h1>
         <p className="loading-label">Loading references…</p>
         <div className="reference-grid loading-grid" aria-hidden="true">
           {Array.from({ length: 8 }, (_, index) => <div className="loading-card" key={index}><span /><i /><i /></div>)}

@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#f5f4ef" />
-    <title>Glace — Library</title>
+    <title>Glance — Library</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <a class="skip-link" href="#library-content">Skip to references</a>
 
     <header class="site-header">
-      <a class="brand" href="./index.html" aria-label="Glace library">
+      <a class="brand" href="./index.html" aria-label="Glance library">
         <img class="brand-mark" src="/glace-eye.svg" width="64" height="27" alt="" />
       </a>
       <div class="header-actions">
@@ -24,12 +24,8 @@
       </div>
     </header>
 
-    <main id="library-content" tabindex="-1">
-      <section class="intro" aria-labelledby="page-title">
-        <p class="eyebrow">Personal design archive</p>
-        <h1 id="page-title">Things worth remembering.</h1>
-        <p class="intro-copy">Typography, components, and small decisions saved from the web.</p>
-      </section>
+    <main class="library-main" id="library-content" tabindex="-1">
+      <h1 class="visually-hidden">Saved references</h1>
 
       <section class="library" aria-labelledby="references-heading">
         <h2 class="visually-hidden" id="references-heading">Saved references</h2>
@@ -40,13 +36,10 @@
               <circle cx="8.75" cy="8.75" r="5.25" />
               <path d="m12.6 12.6 3.9 3.9" />
             </svg>
-            <input id="search" type="search" name="search" placeholder="Search references" autocomplete="off" />
+            <input id="search" type="search" name="search" placeholder="Search fonts, pages, notes…" autocomplete="off" />
           </label>
 
           <div class="filters" role="group" aria-label="Filter references">
-            <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">All</button>
-            <button class="filter" type="button" data-filter="typography" aria-pressed="false">Typography</button>
-            <button class="filter" type="button" data-filter="component" aria-pressed="false">Components</button>
           </div>
         </div>
 

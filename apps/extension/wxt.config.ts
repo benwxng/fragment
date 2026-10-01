@@ -44,8 +44,8 @@ export default defineConfig({
     const cloudConfigured = cloudOrigins.length === 2;
 
     return {
-    name: 'Glace — Design Inspector',
-    short_name: 'Glace',
+    name: 'Glance — Design Inspector',
+    short_name: 'Glance',
     description: 'Inspect and save typography, color, spacing, and component references.',
     icons: {
       16: '/icon/16.png',

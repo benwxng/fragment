@@ -1,3 +1,4 @@
+import { LibraryRefresh } from '@/components/library-refresh';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -35,17 +36,16 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="library-page">
+      {!demo && <LibraryRefresh />}
       <AppHeader email={library.email} count={library.captures.length} canSignOut={!demo} />
       <main className="library-main" id="main-content">
-        <header className="library-intro">
-          <h1>Your curation</h1>
-          {demo ? (
-            <aside className="demo-notice">
-              <span>Preview data</span>
-              <Link href="/">Connect Neon</Link>
-            </aside>
-          ) : null}
-        </header>
+        <h1 className="visually-hidden">Saved references</h1>
+        {demo ? (
+          <aside className="demo-notice">
+            <span>Preview data</span>
+            <Link href="/">Connect Neon</Link>
+          </aside>
+        ) : null}
 
         {parameters.deleted === '1' ? (
           <div className="notice" role="status">

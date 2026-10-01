@@ -43,7 +43,9 @@ export function AuthForm({ mode, returnTo = '/library' }: { mode: 'signin' | 'si
           minLength={8}
           required
         />
-        {mode === 'signup' ? <p className="field-hint">Use at least 8 characters.</p> : null}
+        <p className="field-hint" style={{ visibility: mode === 'signup' ? 'visible' : 'hidden' }} aria-hidden={mode !== 'signup'}>
+          Use at least 8 characters.
+        </p>
       </div>
       <p className={`form-message ${state.status}`} aria-live="polite">
         {state.message}

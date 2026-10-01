@@ -16,7 +16,7 @@ export async function signIn(_state: FormState, formData: FormData): Promise<For
 export async function signUp(_state: FormState, formData: FormData): Promise<FormState> {
   const values = credentials(formData);
   if (!/^\S+@\S+\.\S+$/.test(values.email) || values.password.length < 8) return { status:'error', message:'Enter a valid email and a password with at least 8 characters.' };
-  const { error } = await getAuth().signUp.email({ ...values, name: values.email.split('@')[0] || 'Glace user' });
+  const { error } = await getAuth().signUp.email({ ...values, name: values.email.split('@')[0] || 'Glance user' });
   if (error) return { status: 'error', message: error.message ?? 'Unable to create your account.' };
   redirect(`/verify-email?returnTo=${encodeURIComponent(safeReturnTo(formData.get('returnTo')))}`);
 }

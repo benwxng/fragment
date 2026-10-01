@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { Reference } from '@refer/capture';
 import {
   completeSyncJob,
+  acknowledgeUpload,
+  acknowledgeDeletion,
+  reconcileCloudLibrary,
+  getReference,
+  getCloudRevision,
   claimSyncOwner,
   deleteReference,
   failSyncJob,
@@ -69,5 +74,51 @@ describe('reference sync queue', () => {
     });
     expect(await getSyncOwnerId()).toBe('user-a');
     expect((await listReadySyncJobs())[0]?.token).toBe(ownedJob?.token);
+  });
+});
+
+
+describe('account library cache reconciliation', () => {
+  it('pulls cloud edits and deletions without queuing them for re-upload', async () => {
+    const id = 'cloud-only';
+    await reconcileCloudLibrary('user-a', [{ reference: { ...reference, id, note: 'from web' }, revision: 'r1' }]);
+    expect((await getReference(id))?.note).toBe('from web');
+    expect(await getCloudRevision(id)).toBe('r1');
+    expect((await listReadySyncJobs()).some(job => job.referenceId === id)).toBe(false);
+    await reconcileCloudLibrary('user-a', []);
+    expect(await getReference(id)).toBeUndefined();
+  });
+
+  it('protects offline saves, edits, and deletions from a racing cloud snapshot', async () => {
+    const saved = { ...reference, id: 'offline-save', note: 'offline' };
+    const deleted = { ...reference, id: 'offline-delete' };
+    await saveReference(saved);
+    await deleteReference(deleted.id);
+    await reconcileCloudLibrary('user-a', [
+      { reference: { ...saved, note: 'stale' }, revision: 'r1' },
+      { reference: deleted, revision: 'r1' },
+    ]);
+    expect((await getReference(saved.id))?.note).toBe('offline');
+    expect(await getReference(deleted.id)).toBeUndefined();
+    await reconcileCloudLibrary('user-a', []);
+    expect(await getReference(saved.id)).toBeDefined();
+  });
+
+  it('acknowledges a server write without dropping a newer local edit', async () => {
+    const saved = { ...reference, id: 'racing-edit' };
+    await saveReference(saved);
+    const first = (await listReadySyncJobs()).find(job => job.referenceId === saved.id)!;
+    await saveReference({ ...saved, note: 'newer' });
+    await acknowledgeUpload(saved.id, first.token, 'r2');
+    expect(await getCloudRevision(saved.id)).toBe('r2');
+    expect((await listReadySyncJobs()).find(job => job.referenceId === saved.id)?.token).not.toBe(first.token);
+    await acknowledgeDeletion(saved.id, first.token);
+    expect(await getCloudRevision(saved.id)).toBeNull();
+    expect((await getReference(saved.id))?.note).toBe('newer');
+  });
+
+  it('rejects a different account without touching cached references', async () => {
+    await expect(reconcileCloudLibrary('user-b', [])).rejects.toThrow('another account');
+    expect(await getReference('offline-save')).toBeDefined();
   });
 });
