@@ -951,7 +951,7 @@ dialog::backdrop {
 .detail-back { display: inline-flex; align-items: center; gap: .75rem; min-height: 44px; color: var(--text-secondary); font-size: .875rem; text-decoration: none; }
 #detail-content { position: relative; display: grid; grid-template-columns: minmax(0, 1.89fr) minmax(0, 1fr); gap: var(--detail-gap); align-items: start; }
 #detail-content::before { content: ''; position: absolute; inset-block: -6rem -2rem; inset-inline-start: calc((100% - var(--detail-gap)) * 1.89 / 2.89 + var(--detail-gap) / 2); width: 1px; background: var(--detail-rule); pointer-events: none; }
-.detail-image-column { position: sticky; top: 2rem; min-width: 0; align-self: center; }
+.detail-image-column { position: sticky; top: 2rem; min-width: 0; align-self: start; }
 .detail-hero { height: auto; min-height: 0; max-height: none; padding: 0; border-radius: 8px; background: transparent; box-shadow: none; }
 .detail-hero img { display: block; width: 100%; height: auto; max-height: none; }
 .detail-specimen { font-size: clamp(2rem, 4vw, 4.5rem); max-width: 100%; padding: 0; max-height: 100%; overflow: auto; line-height: 1.12; }
