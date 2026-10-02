@@ -6,12 +6,16 @@
   "exports": {
     ".": "./src/index.ts",
     "./presentation": "./src/presentation.ts",
+    "./library": "./src/library/index.ts",
+    "./library/types": "./src/library/types.ts",
+    "./library/data": "./src/library/data.ts",
     "./library.css": "./src/library.css"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": { "@refer/database": "workspace:*" },
   "devDependencies": {
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

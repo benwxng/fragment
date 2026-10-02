@@ -15,6 +15,7 @@
     "prepare": "pnpm --filter @refer/extension prepare",
     "package:extensions": "node scripts/verify-extension-packages.mjs",
     "smoke:extension": "node scripts/smoke-extension.mjs",
+    "smoke:library": "tsx scripts/smoke-library.ts",
     "smoke:cloud": "node --env-file=.env.local scripts/smoke-neon.mjs",
     "smoke:firefox": "node scripts/smoke-firefox.mjs",
     "test": "pnpm -r test && pnpm test:backend",

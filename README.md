@@ -81,7 +81,7 @@ pnpm zip:firefox
 `pnpm smoke:extension` launches Chromium with the built extension and verifies the
 real toolbar-action flow against an isolated local API fixture: active-tab injection,
 inspection without an account, cancelled sign-in, cloud save, library rendering,
-delete/undo, sign-out and account switching, no new IndexedDB, font previews, and cleanup.
+delete/undo, sign-out and account switching, no new IndexedDB, and cleanup.
 
 `pnpm smoke:firefox` builds the Firefox artifact, validates it with Mozilla's
 `web-ext`, and proves it installs as a temporary add-on in Firefox. Install the
@@ -97,6 +97,34 @@ No Chrome DevTools account is required. Store publication requires Chrome Web St
 and Mozilla Add-ons developer accounts, but unpacked development installation does not.
 
 ## Account library
+
+The web and extension libraries mount the same interface from
+`packages/capture/src/library/`. This owns the header, animated search, filters,
+cards, full-page reference details, account dialog, and delete/undo interactions. All library styles
+live in `packages/capture/src/library.css`; labels and dates remain in
+`packages/capture/src/presentation.ts`. Both use the same reference reader and
+writer. The small web and extension adapters handle authentication, platform URLs,
+and their transport to the account API. The shared renderer owns detail navigation:
+`/library/:id` on the web and `library.html?reference=:id` in the extension, including
+direct links, previous/next, and browser Back/Forward. Detail pages use a responsive
+image-and-information grid, with reduced-motion support.
+
+Make library UI changes in those shared files. Localhost updates automatically;
+rebuild the extension and reload it at `chrome://extensions` to see the same update
+in Chrome.
+
+`pnpm smoke:library` compares the built web and extension interfaces pixel for
+pixel at desktop and mobile sizes, then checks search, filters, detail navigation,
+deep-link reload, dialogs, deletion, undo, and keyboard focus. Build both apps first. In a separate terminal, start an
+isolated preview with no account credentials:
+
+```sh
+NEON_AUTH_BASE_URL='' NEON_AUTH_COOKIE_SECRET='' NEON_FUNCTION_API_BASE_URL='' pnpm --filter @refer/web exec next start --port 3002
+```
+
+The test uses that preview and mocks only the extension's account transport; it
+never reads or changes production references. Set `REFER_WEB_PREVIEW_URL` to use a
+different preview address.
 
 This workspace is linked to Neon project `young-wildflower-24750720`, production.
 The schema, existing library, and screenshots have been migrated. See

@@ -47,9 +47,13 @@ describe('Google OAuth callback routing', () => {
     expect(response.headers.get('set-cookie')).toContain('session_token=test-session');
   });
 
-  it('still sends an unauthenticated library visitor to login', async () => {
-    const response = await proxy(new NextRequest('http://localhost:3000/library'));
-    expect(response.headers.get('location')).toBe('http://localhost:3000/login');
+  it.each(['/library', '/library/example'])('serves the public library shell at %s without depending on auth availability', async (path) => {
+    const upstream = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+    vi.stubGlobal('fetch', upstream);
+    const response = await proxy(new NextRequest('http://localhost:3000' + path));
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(upstream).not.toHaveBeenCalled();
   });
 
   it('preserves the extension handshake when sign-in is required', async () => {

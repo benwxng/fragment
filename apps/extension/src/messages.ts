@@ -14,4 +14,4 @@ export type ExtensionMessage =
 
 export type ExtensionResponse =
   | { ok: true; imageDataUrl?: string; cloudState?: CloudState; references?: Reference[]; userId?: string; imported?: number }
-  | { ok: false; error: string };
+  | { ok: false; error: string; resetLibrary?: boolean };

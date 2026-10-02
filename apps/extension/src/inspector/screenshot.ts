@@ -27,27 +27,14 @@ export interface ScreenshotCropGeometry {
   scaleY: number;
 }
 
-const CONTEXT_PADDING = 24;
-const MINIMUM_PREVIEW_WIDTH = 240;
-const MINIMUM_PREVIEW_HEIGHT = 160;
-
-function previewAxis(
+function visibleAxis(
   start: number,
   end: number,
   viewportSize: number,
-  minimumSize: number,
 ): readonly [number, number] {
   const visibleStart = Math.max(0, Math.min(viewportSize, start));
   const visibleEnd = Math.max(visibleStart, Math.min(viewportSize, end));
-  if (visibleEnd <= visibleStart) return [visibleStart, visibleEnd];
-
-  const desiredSize = Math.min(
-    viewportSize,
-    Math.max(visibleEnd - visibleStart + CONTEXT_PADDING * 2, minimumSize),
-  );
-  const midpoint = (visibleStart + visibleEnd) / 2;
-  const previewStart = Math.max(0, Math.min(viewportSize - desiredSize, midpoint - desiredSize / 2));
-  return [previewStart, previewStart + desiredSize];
+  return [visibleStart, visibleEnd];
 }
 
 export function calculateScreenshotCrop(
@@ -60,19 +47,23 @@ export function calculateScreenshotCrop(
   const scaleX = image.width / viewportWidth;
   const scaleY = image.height / viewportHeight;
 
-  const [visibleLeft, visibleRight] = previewAxis(
+  const [visibleLeft, visibleRight] = visibleAxis(
     rect.left,
     rect.right,
     viewportWidth,
-    MINIMUM_PREVIEW_WIDTH,
   );
-  const [visibleTop, visibleBottom] = previewAxis(
+  const [visibleTop, visibleBottom] = visibleAxis(
     rect.top,
     rect.bottom,
     viewportHeight,
-    MINIMUM_PREVIEW_HEIGHT,
   );
 
+  if (visibleRight <= visibleLeft || visibleBottom <= visibleTop) {
+    throw new Error('Move the element into view, then try again.');
+  }
+
+  // Crop to the selected border box, without surrounding page context or a
+  // minimum preview size. Round outwards only to preserve fractional edge pixels.
   const x = Math.max(0, Math.floor(visibleLeft * scaleX));
   const y = Math.max(0, Math.floor(visibleTop * scaleY));
   const right = Math.min(image.width, Math.ceil(visibleRight * scaleX));

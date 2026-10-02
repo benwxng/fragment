@@ -177,35 +177,39 @@ async function main() {
     assert.equal(fixture.captures.size, 1);
     assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
 
+    const savedReference = [...fixture.captures.values()][0].snapshot;
+    const savedBounds = await target.boundingBox();
+    assert(savedBounds, 'Saved element has no visible bounds');
+    const captureScale = savedReference.source.viewport.scale;
+    const expectedImageSize = {
+      width: Math.ceil((savedBounds.x + savedBounds.width) * captureScale) - Math.floor(savedBounds.x * captureScale),
+      height: Math.ceil((savedBounds.y + savedBounds.height) * captureScale) - Math.floor(savedBounds.y * captureScale),
+    };
+    assert.equal(savedReference.screenshot.width, expectedImageSize.width, 'Saved image includes content outside the element width');
+    assert.equal(savedReference.screenshot.height, expectedImageSize.height, 'Saved image includes content outside the element height');
+
     const libraryOpened = context.waitForEvent('page', { timeout: 5_000 });
     await host.locator('button.view').click();
     const library = await libraryOpened;
     await library.waitForLoadState('domcontentloaded');
     assert.equal(new URL(library.url()).protocol, 'chrome-extension:');
     await library.locator('.reference-card').waitFor({ state: 'visible', timeout: 5_000 });
-    assert.match((await library.locator('#library-count').textContent()) ?? '', /1 reference/);
+    assert.equal(await library.locator('.reference-card').count(), 1);
     assert.equal(await library.locator('.card-media > img').count(), 1);
-    assert.equal(await library.locator('.card-title').textContent(), 'Article');
+    await library.locator('.card-media > img').evaluate((image) => image.decode());
+    assert.deepEqual(await library.locator('.card-media > img').evaluate((image) => ({
+      width: image.naturalWidth, height: image.naturalHeight,
+    })), expectedImageSize, 'Uploaded image dimensions must match the selected element');
+    assert.equal(await library.locator('.card-title').textContent(), 'Inter');
+    assert.equal(await library.locator('.card-meta > span').count(), 0);
+    assert.equal(await library.locator('.card-source').getAttribute('href'), fixture.url);
     assert.equal(await library.locator('.media-meta').count(), 0);
     assert.deepEqual(await library.locator('[data-filter]').allTextContents(), ['All', 'Type', 'Components', 'Colors', 'Layout']);
-    assert.equal(await library.locator('.card-media').evaluate((element) => getComputedStyle(element).borderRadius), '0px');
+    assert.equal(await library.locator('.card-media').evaluate((element) => getComputedStyle(element).borderRadius), '4px');
     await library.locator('[data-filter=layout]').click();
     assert.equal(await library.locator('[data-filter=layout]').getAttribute('aria-pressed'), 'true');
     await library.locator('[data-filter=all]').click();
     await library.locator('.reference-card').waitFor({ state: 'visible' });
-
-    const fontPreviewTrigger = library.locator('.font-preview-trigger');
-    const fontPreview = library.locator('.font-preview-popover');
-    await fontPreviewTrigger.hover();
-    await fontPreview.waitFor({ state: 'visible', timeout: 5_000 });
-    assert.match((await fontPreview.textContent()) ?? '', /Captured preview/);
-    assert.match((await fontPreview.textContent()) ?? '', /Inter/);
-    assert.ok(await fontPreviewTrigger.getAttribute('aria-describedby'));
-
-    await library.locator('.site-header').hover();
-    await fontPreview.waitFor({ state: 'hidden', timeout: 5_000 });
-    await fontPreviewTrigger.focus();
-    await fontPreview.waitFor({ state: 'visible', timeout: 5_000 });
 
     await library.locator('.card-open').click();
     await library.locator('.button-delete').click();
@@ -238,7 +242,7 @@ async function main() {
       'Refer extension smoke test passed.',
       `  browser: ${browserExecutable || 'Playwright Chrome for Testing'}`,
       `  extension: ${extensionId}`,
-      '  verified: inspection without an account, cancelled sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, font previews, cleanup',
+      '  verified: inspection without an account, cancelled sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, cleanup',
       '  backend: isolated local fixture; no production accounts or data used',
       '',
     ].join('\n'));

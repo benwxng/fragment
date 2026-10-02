@@ -6,14 +6,14 @@ import { HttpError } from './validation';
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export const randomToken = () => randomBytes(32).toString('base64url');
 const jwks = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL!));
-export interface Identity { id: string; email: string; kind: 'web' | 'extension' }
+export interface Identity { id: string; email: string; image?: string | null; kind: 'web' | 'extension' }
 
 export async function identify(request: Request): Promise<Identity> {
   const authorization = request.headers.get('authorization') ?? '';
   if (!authorization.startsWith('Bearer ')) throw new HttpError(401, 'Sign in to continue.');
   const token = authorization.slice(7);
   if (token.startsWith('refer_ext_')) {
-    const { rows } = await pool.query(`select a.id, u.email from private.extension_sessions s
+    const { rows } = await pool.query(`select a.id, u.email, u.image from private.extension_sessions s
       join public.accounts a on a.id=s.user_id join neon_auth."user" u on u.id=a.auth_user_id
       where s.token_hash=$1 and s.expires_at>now() and u."emailVerified"=true
       and (not coalesce(u.banned,false) or u."banExpires"<now())`, [hash(token)]);
@@ -36,7 +36,7 @@ export async function identify(request: Request): Promise<Identity> {
   const db = await pool.connect();
   try {
     await db.query('begin');
-    const { rows: users } = await db.query(`select id,email,name,"emailVerified" from neon_auth."user"
+    const { rows: users } = await db.query(`select id,email,name,image,"emailVerified" from neon_auth."user"
       where id=$1 and (not coalesce(banned,false) or "banExpires"<now())`, [sub]);
     const user = users[0];
     if (!user) throw new HttpError(401, 'Account unavailable.');
@@ -51,7 +51,7 @@ export async function identify(request: Request): Promise<Identity> {
     }
     await db.query('insert into public.profiles(id,display_name) values($1,$2) on conflict(id) do nothing', [rows[0].id, user.name?.slice(0,120) || null]);
     await db.query('commit');
-    return { id: rows[0].id, email: user.email, kind: 'web' };
+    return { id: rows[0].id, email: user.email, image: user.image ?? null, kind: 'web' };
   } catch (error) { await db.query('rollback'); throw error; }
   finally { db.release(); }
 }

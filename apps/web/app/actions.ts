@@ -1,8 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
 import { getAuth } from '@/lib/auth/server';
-import { api } from '@/lib/api';
 import { safeReturnTo } from '@/lib/config';
 import type { FormState } from '@/lib/form-state';
 function credentials(formData: FormData) {
@@ -23,9 +21,4 @@ export async function signUp(_state: FormState, formData: FormData): Promise<For
 export async function signOut(): Promise<void> {
   await getAuth().signOut();
   redirect('/login');
-}
-export async function deleteCapture(captureId: string, _state: FormState, _formData: FormData): Promise<FormState> {
-  await api(`/captures/${encodeURIComponent(captureId)}`, { method: 'DELETE' });
-  revalidatePath('/library');
-  redirect('/library?deleted=1');
 }

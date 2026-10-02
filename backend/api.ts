@@ -39,7 +39,7 @@ async function handle(request: Request): Promise<Response> {
   }
 
   const user = await identify(request);
-  if (path === '/me' && request.method === 'GET') return json({ user: { id: user.id, email: user.email } });
+  if (path === '/me' && request.method === 'GET') return json({ user: { id: user.id, email: user.email, image: user.image ?? null } });
   if (path === '/extension/authorize' && request.method === 'POST') {
     if (user.kind !== 'web') throw new HttpError(403, 'Sign in on the website to connect an extension.');
     const body = await jsonBody(request);

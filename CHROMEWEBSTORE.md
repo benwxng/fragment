@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Glance
 
-Last updated: 2026-10-01
+Last updated: 2026-10-02
 
 ## Store listing
 
@@ -39,6 +39,20 @@ Privacy policy URL, publisher contact, support URL, distribution regions, and fi
 
 ## Version history
 
+Card overlays use 15% black, show the font name without a date, and include a solid white button with a black arrow to open the source site in a new tab (2026-10-02, draft). Refresh library screenshots.
+
+Temporary connection failures keep the last loaded library visible. Overlapping refreshes are combined, and the web library retains its loaded view during routine code updates (2026-10-02, draft).
+
+Remove the visible results count from the main library (2026-10-02, draft).
+
+Reference details use normal page scrolling, with the tabs above their content and no separate scroll area (2026-10-02, draft).
+
+The eye logo returns from a reference preview immediately, preserving the loaded library, filters, and scroll position (2026-10-02, draft).
+
+Saved pictures now follow the selected element's visible bounds without extra surrounding page content (2026-10-02, draft). Refresh saved-reference screenshots.
+
+Library cards no longer show the truncated font-name row or its hover preview (2026-10-02, draft). Refresh library screenshots.
+
 The account library now replaces optional sync: sign-in is required to save, with an explicit import for older device saves (2026-10-01, draft).
 The temporary save-feedback preview panel has been removed from the inspector; normal save confirmations remain.
 
@@ -51,3 +65,7 @@ The temporary save-feedback preview panel has been removed from the inspector; n
 | 0.1.0 | 2026-10-01 | Correct the product name to Glance across the website and extension. | Draft |
 | 0.1.0 | 2026-10-01 | Reduce corner radii across the web app, extension library, and inspector; refresh screenshots. | Draft |
 | 0.1.0 | 2026-10-01 | Remove the dark icon background so only the eye remains; refresh artwork showing the old tile. | Draft |
+| 0.1.0 | 2026-10-02 | Enlarge the transparent eye icon to fill the available width in browser extension menus; refresh icon artwork. | Draft |
+| 0.1.0 | 2026-10-02 | Show card details inside a dark hover or keyboard-focus overlay on both libraries, with an in-card touch fallback; refresh library screenshots. | Draft |
+| 0.1.0 | 2026-10-02 | Soften card hover overlays with a lighter gradient and gentle fade and text motion; respect reduced-motion settings. | Draft |
+| 0.1.0 | 2026-10-02 | Add a thin gray search border, quick expansion, and gradual background fading while search is focused on both libraries; refresh library screenshots. | Draft |

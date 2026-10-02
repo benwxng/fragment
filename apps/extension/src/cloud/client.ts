@@ -6,7 +6,7 @@ export class CloudError extends Error {
 export type RemoteCapture = CaptureRow & { sync_revision: string };
 const SESSION_KEY = 'refer-neon-session';
 interface Session { token: string; expiresAt: string }
-interface User { id: string; email: string }
+interface User { id: string; email: string; image?: string | null }
 function base64url(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }

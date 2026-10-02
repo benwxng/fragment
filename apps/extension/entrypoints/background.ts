@@ -1,4 +1,5 @@
 import type { ExtensionMessage, ExtensionResponse } from '../src/messages';
+import { CloudError } from '../src/cloud/client';
 import {
   getCloudState,
   deleteReference, saveReference, listReferences, importLegacyReferences,
@@ -90,7 +91,8 @@ async function handleMessage(
         return { ok: true, imported: await importLegacyReferences() };
     }
   } catch (error) {
-    return { ok: false, error: errorMessage(error) };
+    return { ok: false, error: errorMessage(error),
+      ...(error instanceof CloudError && (error.status === 401 || error.status === 403) ? { resetLibrary: true } : {}) };
   }
 }
 
