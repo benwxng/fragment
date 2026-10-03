@@ -43,19 +43,31 @@ export const inspectorStyles = String.raw`
 
   .highlight {
     position: fixed;
+    inset: 0 auto auto 0;
     z-index: 0;
-    border: 1px solid var(--refer-accent);
-    border-radius: 2px;
-    background: rgba(166, 244, 197, 0.08);
-    box-shadow:
-      0 0 0 1px rgba(23, 24, 22, 0.38),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.16);
     pointer-events: none;
+    transition: none;
   }
+
+  .highlight-fill,
+  .highlight-edge {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 1px;
+    height: 1px;
+    transform-origin: top left;
+    transition: none;
+  }
+
+  .highlight-fill { background: rgba(166, 244, 197, 0.08); }
+  .highlight-edge { background: var(--refer-accent); }
 
   .highlight[hidden],
   .save-feedback[hidden],
   .hud[hidden],
+  .font-preview[hidden],
+  .sections[hidden],
+  .hint[hidden],
   .toast[hidden] {
     display: none;
   }
@@ -137,43 +149,28 @@ export const inspectorStyles = String.raw`
     max-block-size: calc(100vh - 24px);
     overflow: auto;
     overscroll-behavior: contain;
-    border-radius: 10px;
+    border-radius: 4px;
     pointer-events: auto;
     scrollbar-width: thin;
-  }
-
-  .hud-head {
-    display: flex;
-    min-inline-size: 0;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px 10px;
-  }
-
-  .element-name {
-    min-inline-size: 0;
-    overflow: hidden;
-    color: var(--refer-ink);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .dimensions {
-    flex: 0 0 auto;
-    color: var(--refer-faint);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
   }
 
   .sections {
     display: grid;
     gap: 1px;
     background: var(--refer-line);
+  }
+
+  .hud[data-expanded="false"] {
+    inline-size: max-content;
+    max-inline-size: min(288px, calc(100vw - 16px));
+    pointer-events: none;
+  }
+
+  .font-preview {
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
   }
 
   .section {
@@ -346,6 +343,12 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: no-preference) {
+    /* Each edge retargets from its current position during rapid pointer changes. */
+    .highlight[data-smooth="true"],
+    .highlight[data-smooth="true"] > * {
+      transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
     /* Retarget from the current visual position as the inspected element changes. */
     .hud {
       transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
@@ -394,6 +397,9 @@ export const inspectorStyles = String.raw`
       background: transparent;
       box-shadow: none;
     }
+
+    .highlight-fill { background: transparent; }
+    .highlight-edge { background: Highlight; }
 
     .chip,
     .hud,

@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Glance
 
-Last updated: 2026-10-02
+Last updated: 2026-10-03
 
 ## Store listing
 
@@ -11,6 +11,8 @@ Last updated: 2026-10-02
 - Single purpose: Inspect design details on a web page and save them to a personal reference library.
 
 Glance helps you keep the details that catch your eye. Inspect a page's typography, colors, spacing, and components without an account. Sign in to save references and screenshots to one library on the web and across extensions. Saving and viewing the library require an internet connection.
+
+Hover to see the font name. Click once to open the element's design details, then click again to save it. The selected element stays in place while you inspect it; Escape returns to browsing fonts.
 
 The library offers concise reference titles and filters for type, components, colors, and layout.
 
@@ -38,6 +40,14 @@ Saved references include source URLs, page titles, selected website content, des
 Privacy policy URL, publisher contact, support URL, distribution regions, and final store screenshots remain to be supplied before submission. No store submission was performed.
 
 ## Version history
+
+The selection outline glides between hovered elements and resizes smoothly while keeping its green stroke thin. Click selection, keyboard navigation, scrolling, and reduced-motion settings retain immediate alignment (2026-10-03, draft).
+
+Font-only hover previews expand into the inspector on the first click and save on the second. Selection stays locked while the panel is open. Enter follows the same two-step flow; Escape returns to preview. Panel expansion respects reduced motion (2026-10-03, draft). Refresh inspector screenshots.
+
+Inspector panel corners use a 4px radius (2026-10-03, draft). Refresh inspector screenshots.
+
+Inspector panel starts directly with Type; remove the element-name and pixel-dimension header (2026-10-03, draft). Refresh inspector screenshots.
 
 Card overlays use 15% black, show the font name without a date, and include a solid white button with a black arrow to open the source site in a new tab (2026-10-02, draft). Refresh library screenshots.
 

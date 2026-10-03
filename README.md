@@ -13,8 +13,8 @@ The end-to-end product is working:
 
 - one extension source builds for Chromium (including Arc) and Firefox;
 - toolbar or keyboard activation starts a style-isolated element inspector;
-- hover reveals typography, colors, box model, and layout properties;
-- click or Enter signs in if needed, then saves a cropped reference directly to the account;
+- hover shows just the font name; click or Enter locks the element and opens its design properties;
+- click or Enter again signs in if needed, then saves a cropped reference directly to the account;
 - the built-in library supports search, facet filters, detail view, source links,
   deletion, and undo.
 - saved references live in Neon Postgres and private object storage with per-user RLS;
@@ -53,11 +53,11 @@ and select `apps/extension/.output/firefox-mv3/manifest.json`.
 ## Use it
 
 1. Select the Glance toolbar icon, or press `Alt+Shift+D` (`Control+Shift+D` on macOS).
-2. Hover any page element to inspect its design properties.
-3. Click the highlighted element or press Enter to save it.
+2. Hover any page element to see its font name.
+3. Click the highlighted element or press Enter to open its design properties. The selection stays locked while you read. Click on the page or press Enter again to save it.
 4. Use **View references** in the confirmation, or open the extension's library from
    its command/action menu.
-5. Press Escape to leave inspection mode. `↑` selects the parent element; `↓` returns to the previous child.
+5. Press Escape to close the panel and inspect another element; press Escape again to exit. `↑` selects the parent element; `↓` returns to the previous child.
 
 Glance deliberately requests no persistent access to every website. Activation grants
 temporary access only to the active tab. Saved URLs have query strings and fragments

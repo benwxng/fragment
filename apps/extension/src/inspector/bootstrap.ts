@@ -16,11 +16,13 @@ type ToastKind = 'saved' | 'error';
 interface HudElements {
   root: HTMLDivElement;
   highlight: HTMLDivElement;
+  highlightFill: HTMLDivElement;
+  highlightEdges: HTMLDivElement[];
   chip: HTMLDivElement;
   hud: HTMLElement;
-  elementName: HTMLDivElement;
-  dimensions: HTMLDivElement;
+  fontPreview: HTMLDivElement;
   sections: HTMLDivElement;
+  hint: HTMLDivElement;
   chipLabel: HTMLSpanElement;
   libraryButton: HTMLButtonElement;
   exitButton: HTMLButtonElement;
@@ -88,12 +90,15 @@ function createUi(shadow: ShadowRoot): HudElements {
   const highlight = element('div', 'highlight');
   highlight.hidden = true;
   highlight.setAttribute('aria-hidden', 'true');
+  const highlightFill = element('div', 'highlight-fill');
+  const highlightEdges = Array.from({ length: 4 }, () => element('div', 'highlight-edge'));
+  highlight.append(highlightFill, ...highlightEdges);
 
   const chip = element('div', 'chip');
   const statusDot = element('span', 'status-dot');
   statusDot.setAttribute('aria-hidden', 'true');
   const chipLabel = element('span', 'chip-label');
-  chipLabel.textContent = 'Inspecting';
+  chipLabel.textContent = 'Click to inspect';
   const libraryButton = createButton('library', 'View references');
   const exitButton = createButton('exit', 'Exit');
   exitButton.setAttribute('aria-label', 'Exit inspector');
@@ -103,14 +108,14 @@ function createUi(shadow: ShadowRoot): HudElements {
   const hud = element('section', 'hud');
   hud.hidden = true;
   hud.setAttribute('aria-label', 'Inspector Panel');
-  const hudHead = element('div', 'hud-head');
-  const elementName = element('div', 'element-name');
-  const dimensions = element('div', 'dimensions');
-  hudHead.append(elementName, dimensions);
+  hud.dataset.expanded = 'false';
+  const fontPreview = element('div', 'font-preview');
   const sections = element('div', 'sections');
+  sections.hidden = true;
   const hint = element('div', 'hint');
-  hint.innerHTML = '<kbd>Enter</kbd> save · <kbd>↑↓</kbd> traverse · <kbd>Esc</kbd> exit';
-  hud.append(hudHead, sections, hint);
+  hint.hidden = true;
+  hint.innerHTML = '<kbd>Click</kbd> or <kbd>Enter</kbd> save · <kbd>↑↓</kbd> traverse · <kbd>Esc</kbd> back';
+  hud.append(fontPreview, sections, hint);
 
   const toast = element('div', 'toast');
   toast.hidden = true;
@@ -152,11 +157,13 @@ function createUi(shadow: ShadowRoot): HudElements {
   return {
     root,
     highlight,
+    highlightFill,
+    highlightEdges,
     chip,
     hud,
-    elementName,
-    dimensions,
+    fontPreview,
     sections,
+    hint,
     chipLabel,
     libraryButton,
     exitButton,
@@ -231,14 +238,6 @@ function primaryFont(fontFamily: string): string {
   return fontFamily.split(',')[0]?.trim().replace(/^['"]|['"]$/g, '') || fontFamily;
 }
 
-function descriptor(target: Element): string {
-  let result = target.tagName.toLowerCase();
-  if (target.id) result += `#${target.id}`;
-  const classes = Array.from(target.classList).slice(0, 2);
-  if (classes.length) result += `.${classes.join('.')}`;
-  return result;
-}
-
 function createSection(title: string, rows: readonly HudRow[]): HTMLElement {
   const section = element('section', 'section');
   const heading = element('h2', 'section-title');
@@ -272,13 +271,9 @@ function createSection(title: string, rows: readonly HudRow[]): HTMLElement {
 
 function renderProperties(ui: HudElements, target: Element): void {
   const computed = getComputedStyle(target);
-  const rect = target.getBoundingClientRect();
   const foreground = computed.color;
   const background = effectiveBackground(target);
 
-  ui.elementName.textContent = descriptor(target);
-  ui.elementName.title = descriptor(target);
-  ui.dimensions.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
   ui.sections.replaceChildren(
     createSection('Type', [
       { label: primaryFont(computed.fontFamily), value: px(computed.fontSize, 0) },
@@ -338,6 +333,7 @@ function positionOverlay(
   ui: HudElements,
   target: Element,
   pointer: Readonly<{ x: number; y: number }>,
+  smoothOutline?: boolean,
 ): void {
   const rect = target.getBoundingClientRect();
   const visibleLeft = clamp(rect.left, 0, window.innerWidth);
@@ -384,11 +380,23 @@ function positionOverlay(
 
   // Read panel geometry before updating the outline to avoid another layout flush.
   ui.highlight.hidden = false;
+  if (smoothOutline !== undefined) ui.highlight.dataset.smooth = String(smoothOutline);
+  const width = Math.max(0, visibleRight - visibleLeft);
+  const height = Math.max(0, visibleBottom - visibleTop);
   Object.assign(ui.highlight.style, {
     transform: `translate3d(${visibleLeft}px, ${visibleTop}px, 0)`,
-    width: `${Math.max(0, visibleRight - visibleLeft)}px`,
-    height: `${Math.max(0, visibleBottom - visibleTop)}px`,
+    width: `${width}px`,
+    height: `${height}px`,
   });
+  // Animate independent 1px edges so resizing never stretches the stroke thickness.
+  ui.highlightFill.style.transform = `scale(${width}, ${height})`;
+  const edges = [
+    `scaleX(${width})`,
+    `translateY(${Math.max(0, height - 1)}px) scaleX(${width})`,
+    `scaleY(${height})`,
+    `translateX(${Math.max(0, width - 1)}px) scaleY(${height})`,
+  ];
+  ui.highlightEdges.forEach((edge, index) => { edge.style.transform = edges[index]!; });
   ui.hud.style.transform = `translate3d(${left}px, ${top}px, 0)`;
 }
 
@@ -463,6 +471,8 @@ export function bootstrapInspector(): void {
 
   let active = true;
   let saving = false;
+  let expanded = false;
+  let panelAnimation: Animation | undefined;
   let target: Element | null = null;
   let frame = 0;
   let geometryFrame = 0;
@@ -494,23 +504,48 @@ export function bootstrapInspector(): void {
     host.style.setProperty('visibility', visible ? 'visible' : 'hidden', 'important');
   }
 
-  function setTarget(next: Element | null): void {
+  function setExpanded(next: boolean, animate = false): void {
+    panelAnimation?.cancel();
+    panelAnimation = undefined;
+    const before = ui.hud.getBoundingClientRect();
+    expanded = next;
+    ui.hud.dataset.expanded = String(next);
+    ui.fontPreview.hidden = next;
+    ui.sections.hidden = !next;
+    ui.hint.hidden = !next;
+    ui.chipLabel.textContent = next ? 'Click again to save' : 'Click to inspect';
+    if (!target?.isConnected) return;
+    if (next) renderProperties(ui, target);
+    positionOverlay(ui, target, lastPointer, next ? false : undefined);
+    if (next && animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const after = ui.hud.getBoundingClientRect();
+      // Reveal the panel from the compact label without scaling its text or page content.
+      panelAnimation = ui.hud.animate([
+        { clipPath: `inset(0 ${Math.max(0, after.width - before.width)}px ${Math.max(0, after.height - before.height)}px 0 round 4px)` },
+        { clipPath: 'inset(0 0 0 0 round 4px)' },
+      ], { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+    }
+  }
+
+  function setTarget(next: Element | null, smoothOutline = false): void {
     if (!active || next === host || next?.closest?.(`#${HOST_ID}`)) return;
     if (next === target) {
-      if (target?.isConnected) positionOverlay(ui, target, lastPointer);
+      if (target?.isConnected) positionOverlay(ui, target, lastPointer, smoothOutline);
       return;
     }
 
     target = next;
     if (!target || !target.isConnected) {
       target = null;
+      setExpanded(false);
       ui.highlight.hidden = true;
       ui.hud.hidden = true;
       return;
     }
 
-    renderProperties(ui, target);
-    positionOverlay(ui, target, lastPointer);
+    ui.fontPreview.textContent = primaryFont(getComputedStyle(target).fontFamily);
+    if (expanded) renderProperties(ui, target);
+    positionOverlay(ui, target, lastPointer, smoothOutline);
   }
 
   function hideToast(): void {
@@ -558,7 +593,10 @@ export function bootstrapInspector(): void {
       retryTarget = null;
       const message = 'Saved to your library';
       showToast('saved', message);
-      if (active) saveFeedback.saved(elementToSave);
+      if (active) {
+        setExpanded(false);
+        saveFeedback.saved(elementToSave);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to save. Check your connection and try again.';
@@ -568,7 +606,7 @@ export function bootstrapInspector(): void {
       saving = false;
       if (active) {
         setOverlayVisibility(true);
-        ui.chipLabel.textContent = 'Inspecting';
+        ui.chipLabel.textContent = expanded ? 'Click again to save' : 'Click to inspect';
         if (target?.isConnected) positionOverlay(ui, target, lastPointer);
       }
     }
@@ -577,6 +615,7 @@ export function bootstrapInspector(): void {
   function cleanup(): void {
     if (!active) return;
     active = false;
+    panelAnimation?.cancel();
     saveFeedback.dispose();
     if (frame) cancelAnimationFrame(frame);
     if (geometryFrame) cancelAnimationFrame(geometryFrame);
@@ -587,9 +626,10 @@ export function bootstrapInspector(): void {
 
   function selectAtPointer(): void {
     frame = 0;
+    if (expanded || saving) return;
     lastPointer = pendingPoint;
     const hit = document.elementFromPoint(pendingPoint.x, pendingPoint.y);
-    if (hit && hit !== host) setTarget(hit);
+    if (hit && hit !== host) setTarget(hit, true);
   }
 
   const handlePointerMove: EventListener = (event) => {
@@ -608,13 +648,24 @@ export function bootstrapInspector(): void {
     if (!(event instanceof MouseEvent) || isOverlayEvent(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (event.button !== 0 || saving) return;
+    if (expanded) {
+      if (target?.isConnected) void saveTarget(target);
+      else setTarget(null);
+      return;
+    }
+    if (frame) { cancelAnimationFrame(frame); frame = 0; }
+    lastPointer = pendingPoint = { x: event.clientX, y: event.clientY };
     const clicked = document.elementFromPoint(event.clientX, event.clientY);
     if (clicked && clicked !== host) setTarget(clicked);
-    if (target) void saveTarget(target);
+    if (target) {
+      setExpanded(true, true);
+      announce(ui.announcer, 'Element selected. Click again or press Enter to save. Escape resumes inspection.');
+    }
   };
 
   const handleFocus: EventListener = (event) => {
-    if (isOverlayEvent(event)) return;
+    if (isOverlayEvent(event) || expanded || saving) return;
     if (event.target instanceof Element) setTarget(event.target);
   };
 
@@ -624,11 +675,19 @@ export function bootstrapInspector(): void {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      cleanup();
+      if (event.repeat) return;
+      if (expanded && !saving) {
+        setExpanded(false);
+        announce(ui.announcer, 'Move the pointer to inspect another element.');
+      } else cleanup();
       return;
     }
 
     if (isOverlayEvent(event)) return;
+    if (saving) {
+      if (event.key === 'Enter') { event.preventDefault(); event.stopImmediatePropagation(); }
+      return;
+    }
 
     const plainArrow = !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
     if (plainArrow && event.key === 'ArrowUp' && target) {
@@ -655,7 +714,12 @@ export function bootstrapInspector(): void {
     if (event.key === 'Enter' && target) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      void saveTarget(target);
+      if (event.repeat) return;
+      if (expanded) void saveTarget(target);
+      else {
+        setExpanded(true);
+        announce(ui.announcer, 'Element selected. Press Enter again to save. Escape resumes inspection.');
+      }
     }
   };
 
@@ -663,7 +727,7 @@ export function bootstrapInspector(): void {
     if (geometryFrame) return;
     geometryFrame = requestAnimationFrame(() => {
       geometryFrame = 0;
-      if (target?.isConnected) positionOverlay(ui, target, lastPointer);
+      if (target?.isConnected) positionOverlay(ui, target, lastPointer, false);
       else if (target) setTarget(null);
     });
   };
@@ -721,5 +785,5 @@ export function bootstrapInspector(): void {
   ui.undoButton.addEventListener('click', undoSave);
   cleanups.push(() => ui.undoButton.removeEventListener('click', undoSave));
 
-  announce(ui.announcer, 'Inspector active. Move the pointer or focus an element to inspect it.');
+  announce(ui.announcer, 'Inspector active. Hover to see the font. Click or press Enter to inspect, then again to save.');
 }

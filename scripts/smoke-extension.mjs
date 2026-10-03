@@ -155,14 +155,73 @@ async function main() {
     await target.hover({ position: cardPaddingPoint });
     const hud = host.locator('.hud');
     await hud.waitFor({ state: 'visible', timeout: 5_000 });
-    const hudText = await hud.textContent();
-    assert.match(hudText ?? '', /article/i, 'HUD did not identify the hovered element');
-    assert.match(hudText ?? '', /TypeInter16 px/i, 'HUD did not render typography details');
+    assert.equal(await hud.innerText(), 'Inter', 'Hover must show only the font name');
+    assert.equal(await hud.getAttribute('data-expanded'), 'false');
+    assert.equal(await host.locator('.sections').isVisible(), false);
+
+    const outlineMotion = await page.evaluate(async () => {
+      const root = document.querySelector('#__refer_design_inspector__').shadowRoot;
+      const outline = root.querySelector('.highlight');
+      const edges = [...root.querySelectorAll('.highlight-edge')];
+      const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+      const move = async selector => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        window.dispatchEvent(new PointerEvent('pointermove', { clientX: rect.x + 10, clientY: rect.y + 10 }));
+        await frame();
+        getComputedStyle(outline).transform;
+      };
+      await move('h1');
+      const animations = outline.getAnimations({ subtree: true });
+      for (const animation of animations) { animation.pause(); animation.currentTime = 40; }
+      const before = edges.map(edge => edge.getBoundingClientRect().toJSON());
+      await move('.card:last-child');
+      const retargeted = outline.getAnimations({ subtree: true });
+      for (const animation of retargeted) { animation.pause(); animation.currentTime = 0; }
+      const after = edges.map(edge => edge.getBoundingClientRect().toJSON());
+      for (const animation of retargeted) animation.finish();
+      return { animated: animations.length > 0, retargeted: retargeted.length > 0,
+        noSnap: before.every((rect, i) => ['x', 'y', 'width', 'height'].every(key => Math.abs(rect[key] - after[i][key]) < .5)),
+        thinEdges: before[0].height === 1 && before[2].width === 1 };
+    });
+    assert(outlineMotion.animated && outlineMotion.retargeted, 'The outline must glide and retarget during rapid hovering');
+    assert(outlineMotion.noSnap, 'Interrupted outline movement must continue from its visible position');
+    assert(outlineMotion.thinEdges, 'Resizing the outline must preserve the 1px stroke');
+    await target.hover({ position: cardPaddingPoint });
 
     const toast = host.locator('.toast');
     // Cancelled sign-in must leave both the cloud and device empty.
-    await worker.evaluate(() => { chrome.identity.launchWebAuthFlow = async () => undefined; });
+    await worker.evaluate(() => {
+      globalThis.smokeSignInAttempts = 0;
+      chrome.identity.launchWebAuthFlow = async () => { globalThis.smokeSignInAttempts++; return undefined; };
+    });
+    // Keyboard and reduced-motion users get the same two-step flow.
+    await page.keyboard.down('Enter');
+    assert.equal(await hud.getAttribute('data-expanded'), 'true');
+    assert.match(await hud.textContent(), /TypeInter16 px/i);
+    await page.keyboard.down('Enter'); // Repeat must not trigger a save after opening.
+    await page.keyboard.up('Enter');
+    // Return to preview before checking pointer expansion.
+    await page.keyboard.press('Escape');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await target.click({ position: cardPaddingPoint });
+    assert.equal(await hud.getAttribute('data-expanded'), 'true');
+    assert.equal(await hud.evaluate(el => el.getAnimations().length), 0);
+    await page.keyboard.press('Escape');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    assert.equal(await hud.getAttribute('data-expanded'), 'false');
+    assert.equal(await host.locator('.sections').isVisible(), false);
+    await target.click({ position: cardPaddingPoint });
+    assert.equal(await hud.getAttribute('data-expanded'), 'true', 'First click must open the panel');
+    assert(await hud.evaluate(el => el.getAnimations().some(animation =>
+      animation.effect.getKeyframes().some(frame => frame.clipPath))), 'Pointer selection should animate the panel opening');
+    assert.match(await hud.textContent(), /TypeInter16 px/i);
+    assert.equal(fixture.captures.size, 0, 'Opening the panel must not save');
+    assert.equal(await worker.evaluate(() => globalThis.smokeSignInAttempts), 0, 'Opening must not start sign-in');
+    const selectedOutline = await host.locator('.highlight').boundingBox();
+    await page.locator('h1').hover();
+    assert.deepEqual(await host.locator('.highlight').boundingBox(), selectedOutline, 'The selection must stay locked while the panel is open');
+    assert.match(await hud.textContent(), /TypeInter16 px/i);
+    await page.locator('h1').click(); // Second click saves the locked card, not the newly hovered heading.
     await toast.waitFor({ state: 'visible', timeout: 10_000 });
     assert.match((await toast.textContent()) ?? '', /cancelled/i);
     assert.equal(fixture.captures.size, 0);
@@ -175,6 +234,7 @@ async function main() {
     await page.waitForFunction(() => document.querySelector('#__refer_design_inspector__')?.shadowRoot?.querySelector('.toast')?.textContent?.includes('Saved to your library'));
     assert.match((await toast.textContent()) ?? '', /Saved/i);
     assert.equal(fixture.captures.size, 1);
+    assert.equal(await hud.getAttribute('data-expanded'), 'false', 'Saving returns to font-only inspection');
     assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
 
     const savedReference = [...fixture.captures.values()][0].snapshot;
@@ -242,7 +302,7 @@ async function main() {
       'Refer extension smoke test passed.',
       `  browser: ${browserExecutable || 'Playwright Chrome for Testing'}`,
       `  extension: ${extensionId}`,
-      '  verified: inspection without an account, cancelled sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, cleanup',
+      '  verified: font-only hover, animated first-click inspection, locked selection, second-click save, keyboard/reduced-motion flow, cancelled sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, cleanup',
       '  backend: isolated local fixture; no production accounts or data used',
       '',
     ].join('\n'));
