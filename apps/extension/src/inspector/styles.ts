@@ -264,7 +264,7 @@ export const inspectorStyles = String.raw`
     position: fixed;
     z-index: 4;
     inset-inline-start: 50%;
-    inset-block-end: max(16px, env(safe-area-inset-bottom));
+    inset-block-start: max(64px, calc(env(safe-area-inset-top) + 52px));
     display: flex;
     min-block-size: 44px;
     max-inline-size: calc(100vw - 24px);
@@ -343,6 +343,18 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: no-preference) {
+    .toast {
+      opacity: 1;
+      transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
+    }
+
+    @starting-style {
+      .toast {
+        opacity: 0;
+        transform: translate(-50%, -12px);
+      }
+    }
+
     /* Each edge retargets from its current position during rapid pointer changes. */
     .highlight[data-smooth="true"],
     .highlight[data-smooth="true"] > * {

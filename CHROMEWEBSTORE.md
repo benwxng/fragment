@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Glance
 
-Last updated: 2026-10-03
+Last updated: 2026-10-04
 
 ## Store listing
 
@@ -40,6 +40,18 @@ Saved references include source URLs, page titles, selected website content, des
 Privacy policy URL, publisher contact, support URL, distribution regions, and final store screenshots remain to be supplied before submission. No store submission was performed.
 
 ## Version history
+
+Inspector save confirmations appear below the top toolbar and slide down into place, respecting reduced motion (2026-10-04, draft).
+
+Inspector panel opening uses the library search expansion easing with a 280ms reveal; keyboard and reduced-motion opening remain instant (2026-10-04, draft).
+
+Saved-card images and hover effects share one rounded clipping boundary, with the border drawn above them to prevent exposed image edges (2026-10-04, draft).
+
+Saved-card hover titles have a 6px backdrop blur that fades away within the top 7rem of the card (2026-10-04, draft).
+
+Saved-card hover titles slide down into place. The source-domain line below the font name is removed; the source button remains (2026-10-04, draft).
+
+Saved-card hover overlays fade from 40% black at the top to transparent at 75% of the card height in both libraries (2026-10-04, draft).
 
 The selection outline glides between hovered elements and resizes smoothly while keeping its green stroke thin. Click selection, keyboard navigation, scrolling, and reduced-motion settings retain immediate alignment (2026-10-03, draft).
 

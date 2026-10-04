@@ -520,10 +520,11 @@ export function bootstrapInspector(): void {
     if (next && animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const after = ui.hud.getBoundingClientRect();
       // Reveal the panel from the compact label without scaling its text or page content.
+      // Match the library search expansion curve, with a shorter inspector duration.
       panelAnimation = ui.hud.animate([
         { clipPath: `inset(0 ${Math.max(0, after.width - before.width)}px ${Math.max(0, after.height - before.height)}px 0 round 4px)` },
         { clipPath: 'inset(0 0 0 0 round 4px)' },
-      ], { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+      ], { duration: 280, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
     }
   }
 

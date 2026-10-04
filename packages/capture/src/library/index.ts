@@ -356,17 +356,11 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     const body = document.createElement('span');
     body.className = 'card-body';
 
-    const meta = document.createElement('span');
-    meta.className = 'card-meta';
-    const host = document.createElement('bdi');
-    host.textContent = sourceHost(reference);
-    meta.append(host);
-
     const title = document.createElement('span');
     title.className = 'card-title';
     title.textContent = fontFamily(reference);
 
-    body.append(meta, title);
+    body.append(title);
     openButton.append(media, body);
     card.append(openButton);
     const source = safeSourceUrl(reference);
