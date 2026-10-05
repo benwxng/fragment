@@ -260,7 +260,7 @@ try {
       assert.equal(await page.locator('#main-content').isVisible(), false);
       assert.equal(await page.locator('dialog[open]').count(), 0);
       await page.locator('#detail-content').evaluate(async el => { await Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)); });
-      await page.getByRole('tab', { name: 'Layout & context' }).click();
+      await page.getByRole('tab', { name: 'Layout' }).click();
       const panel = page.getByRole('tabpanel');
       await panel.getByRole('heading').first().hover();
       const scrollBefore = await page.evaluate(() => window.scrollY);
@@ -269,7 +269,7 @@ try {
       assert.equal(await panel.evaluate(el => el.scrollTop), 0, 'Details must scroll with the page, not independently');
       await page.evaluate(() => window.scrollTo(0, 0));
       assert(await page.getByRole('tabpanel').getByRole('heading', { name: 'Context', exact: true }).isVisible());
-      await page.getByRole('tab', { name: 'Layout & context' }).press('ArrowLeft');
+      await page.getByRole('tab', { name: 'Layout' }).press('ArrowLeft');
       assert.equal(await page.getByRole('tab', { name: 'Inspect', exact: true }).getAttribute('aria-selected'), 'true');
       assert(await page.getByRole('tabpanel').getByRole('heading', { name: 'Typography', exact: true }).isVisible());
       await page.locator('#detail-title').focus();

@@ -616,13 +616,6 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     metadata.append(saved);
     footer.append(deleteButton);
 
-    propertyGrid.append(detailSection('Context', [
-      ['Role', reference.element.semantic?.role],
-      ['Selector', reference.element.selector],
-      ['Snapshot version', reference.snapshotVersion],
-      ['Source', sourceUrl(reference)],
-      ['Captured text', capturedText(reference)],
-    ]));
     const imageColumn = document.createElement('div');
     imageColumn.className = 'detail-image-column';
     imageColumn.append(hero);
@@ -677,7 +670,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     tabList.className = 'detail-tabs';
     tabList.setAttribute('role', 'tablist');
     tabList.setAttribute('aria-label', 'Reference details');
-    const panels: [string, HTMLElement][] = [['Inspect', inspect], ['Layout & context', more]];
+    const panels: [string, HTMLElement][] = [['Inspect', inspect], ['Layout', more]];
     if (reference.note) panels.push(['Notes', notes]);
     const tabs = panels.map(([label, panel], index) => {
       const tab = document.createElement('button');
