@@ -1,7 +1,8 @@
-import { getAuth } from '@/lib/auth/server';
+import { rejectBackendSession, SessionError, sessionToken } from '@/lib/auth/session';
+import { unstable_rethrow } from 'next/navigation';
 
 // Same-origin, authenticated transport for the shared library. No tokens reach the browser.
-async function handle(request: Request, context: { params: Promise<{ path: string[] }> }) {
+async function forward(request: Request, context: { params: Promise<{ path: string[] }> }) {
   const path = '/' + (await context.params).path.join('/');
   const uuid = '[0-9a-fA-F-]{36}';
   const allowed = request.method === 'GET'
@@ -13,17 +14,13 @@ async function handle(request: Request, context: { params: Promise<{ path: strin
   if (request.method !== 'GET' && request.headers.get('origin') !== new URL(request.url).origin) {
     return Response.json({ error: 'Invalid request origin.' }, { status: 403 });
   }
-  const { data, error } = await getAuth().token();
-  if (error && error.status !== 401 && error.status !== 403) {
-    return Response.json({ error: 'Unable to connect to your account right now. Please try again.' }, { status: 503 });
-  }
-  if (error || !data?.token) return Response.json({ error: 'Sign in to access your library.' }, { status: 401 });
-  const headers = { Authorization: `Bearer ${data.token}` };
+  const headers = { Authorization: `Bearer ${await sessionToken()}` };
   const base = process.env.NEON_FUNCTION_API_BASE_URL!;
   const owner = request.headers.get('x-library-owner');
   if (path !== '/me') {
     if (!owner) return Response.json({ error: 'An account is required.' }, { status: 400 });
     const me = await fetch(new URL('/me', base), { headers, cache: 'no-store', signal: AbortSignal.timeout(30_000) });
+    if (me.status === 401) { await me.body?.cancel(); await rejectBackendSession(); }
     if (!me.ok) return new Response(me.body, { status: me.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
     const { user } = await me.json();
     if (user.id !== owner) return Response.json({ error: 'Your account changed. Refresh the library.' }, { status: 409 });
@@ -54,10 +51,24 @@ async function handle(request: Request, context: { params: Promise<{ path: strin
     method: request.method, headers: { ...headers, 'Content-Type': request.headers.get('content-type') ?? 'application/json' },
     body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(30_000),
   });
+  if (response.status === 401) { await response.body?.cancel(); await rejectBackendSession(); }
   return new Response(response.body, {
     status: response.status,
     headers: { 'Content-Type': response.headers.get('content-type') ?? 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
   });
+}
+async function handle(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  try { return await forward(request, context); }
+  catch (error) {
+    unstable_rethrow(error);
+    const status = error instanceof SessionError ? error.status : 503;
+    // Keep diagnostics useful without logging cookies, tokens, URLs, or account data.
+    console.warn(JSON.stringify({ event: 'library.request_failed', status,
+      name: error instanceof Error ? error.name : 'Unknown',
+      code: (error as { cause?: { code?: string } })?.cause?.code }));
+    return Response.json({ error: error instanceof SessionError ? error.message : 'Unable to connect to your library right now. Please try again.' },
+      { status, headers: { 'Cache-Control': 'no-store' } });
+  }
 }
 export const GET = handle;
 export const PUT = handle;

@@ -1,5 +1,5 @@
 import type { Reference } from '@refer/capture';
-import { readReferences, uploadReference as upload } from '@refer/capture/library/data';
+import { LibraryImageCache, readReferences, uploadReference as upload } from '@refer/capture/library/data';
 import { acknowledgeLegacyImport, claimLegacyImport, legacyImportStatus } from '../storage/legacy';
 import { CloudError, getAccountClient, getCloudClient } from './client';
 import type { CloudState } from './types';
@@ -7,6 +7,8 @@ import type { CloudState } from './types';
 type Account = NonNullable<Awaited<ReturnType<typeof getAccountClient>>>;
 let signingIn: Promise<void> | undefined;
 let importing: Promise<number> | undefined;
+// Optional memory-only optimization; restarting the worker simply downloads images again.
+const images = new LibraryImageCache();
 
 async function changed() {
   await browser.storage.local.set({ 'refer-library-updated': crypto.randomUUID() });
@@ -27,13 +29,14 @@ async function account(interactive = false): Promise<Account> {
     await signingIn;
     current = await getAccountClient();
   }
-  if (!current) throw new Error('Sign in to save and view references.');
+  if (!current) { images.clear(); throw new Error('Sign in to save and view references.'); }
   return current;
 }
 
 export async function getCloudState(): Promise<CloudState> {
   const configured = Boolean(getCloudClient());
   const current = configured ? await getAccountClient() : null;
+  if (!current) images.clear();
   const legacy = current ? await legacyImportStatus(current.user.id) : null;
   return {
     configured, authStatus: !configured ? 'unavailable' : current ? 'signed-in' : 'signed-out',
@@ -49,6 +52,7 @@ export async function signIn() {
 
 export async function signOut() {
   if (importing || signingIn) throw new Error('Wait for sign-in or import to finish before signing out.');
+  images.clear();
   try { await getCloudClient()?.auth.signOut(); }
   finally { await changed(); }
   return getCloudState();
@@ -70,7 +74,7 @@ export async function deleteReference(id: string, expectedUserId?: string): Prom
 }
 
 export async function listReferences() {
-  return readReferences(await account());
+  return readReferences(await account(), images);
 }
 
 async function importLegacy(): Promise<number> {

@@ -1,0 +1,970 @@
+{
+  "product": "Glance",
+  "auditDate": "2026-10-04",
+  "paperFileId": "01M3WZ19PKZZT1XXSBRKB7S7D2",
+  "pages": {
+    "editable": "https://app.paper.design/file/01M3WZ19PKZZT1XXSBRKB7S7D2/p-2-0",
+    "exact": "https://app.paper.design/file/01M3WZ19PKZZT1XXSBRKB7S7D2/p-3-0"
+  },
+  "counts": {
+    "capturedStates": 70,
+    "editableScreens": 70,
+    "exactCaptureBoards": 70,
+    "guideBoards": 6,
+    "catalogEntries": 89
+  },
+  "captureDirectory": "output/playwright/glance-ui-inventory",
+  "editableBoards": [
+    {
+      "id": "01-sign-in",
+      "nodeId": "2KF-0",
+      "width": 1440,
+      "height": 1012
+    },
+    {
+      "id": "02-sign-up",
+      "nodeId": "2LI-0",
+      "title": "02 · Web / Create account",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "03-auth-error",
+      "nodeId": "2MH-0",
+      "title": "03 · Web / Email confirmation error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "04-not-found",
+      "nodeId": "2NH-0",
+      "title": "04 · Web / Missing page",
+      "width": 1440,
+      "height": 1012,
+      "elements": 6
+    },
+    {
+      "id": "05-mobile-sign-in",
+      "nodeId": "2NY-0",
+      "title": "05 · Web / Sign in · 390 px",
+      "width": 390,
+      "height": 1067,
+      "elements": 19
+    },
+    {
+      "id": "10-web-library",
+      "nodeId": "2OW-0",
+      "title": "10 · Shared library / Gallery",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "inspector-01-active",
+      "nodeId": "2PN-0",
+      "title": "I01 · Inspector active",
+      "width": 1280,
+      "height": 1012,
+      "elements": 4
+    },
+    {
+      "id": "inspector-02-hover",
+      "nodeId": "2Q3-0",
+      "title": "I02 · Hover font preview",
+      "width": 1280,
+      "height": 1012,
+      "elements": 10
+    },
+    {
+      "id": "inspector-03-panel",
+      "nodeId": "2QT-0",
+      "title": "I03 · Selected element inspector",
+      "width": 1280,
+      "height": 1012,
+      "elements": 64
+    },
+    {
+      "id": "11-card-hover",
+      "nodeId": "2ZS-0",
+      "title": "11 · Shared library / Card hover",
+      "width": 1440,
+      "height": 1012,
+      "elements": 19
+    },
+    {
+      "id": "12-detail-inspect",
+      "nodeId": "30T-0",
+      "title": "12 · Shared library / Information preview",
+      "width": 1440,
+      "height": 1012,
+      "elements": 46
+    },
+    {
+      "id": "13-detail-layout",
+      "nodeId": "32R-0",
+      "title": "13 · Shared library / Layout & context",
+      "width": 1440,
+      "height": 1400,
+      "elements": 76
+    },
+    {
+      "id": "14-detail-notes",
+      "nodeId": "35R-0",
+      "title": "14 · Shared library / Notes",
+      "width": 1440,
+      "height": 1012,
+      "elements": 28
+    },
+    {
+      "id": "15-delete-dialog",
+      "nodeId": "373-0",
+      "title": "15 · Shared library / Delete confirmation",
+      "width": 1440,
+      "height": 1012,
+      "elements": 36
+    },
+    {
+      "id": "16-delete-undo",
+      "nodeId": "38P-0",
+      "title": "16 · Shared library / Undo deletion",
+      "width": 1440,
+      "height": 1012,
+      "elements": 16
+    },
+    {
+      "id": "17-empty-search",
+      "nodeId": "39M-0",
+      "title": "17 · Shared library / No search results",
+      "width": 1440,
+      "height": 1012,
+      "elements": 11
+    },
+    {
+      "id": "18-web-account",
+      "nodeId": "3AC-0",
+      "title": "18 · Web / Account panel",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "19-mobile-library",
+      "nodeId": "3BD-0",
+      "title": "19 · Shared library / Gallery · 390 px",
+      "width": 390,
+      "height": 1198,
+      "elements": 7
+    },
+    {
+      "id": "20-mobile-detail",
+      "nodeId": "3BT-0",
+      "title": "20 · Shared library / Information · 390 px",
+      "width": 390,
+      "height": 1173,
+      "elements": 46
+    },
+    {
+      "id": "40-verify-email",
+      "nodeId": "3DR-0",
+      "title": "40 · Web / Verify email",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "41-verification-sent",
+      "nodeId": "3ED-0",
+      "title": "41 · Web / Verification code sent",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "42-verification-pending",
+      "nodeId": "3EZ-0",
+      "title": "42 · Web / Verification pending",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "43-verification-invalid",
+      "nodeId": "3FL-0",
+      "title": "43 · Web / Invalid verification code",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "44-extension-consent",
+      "nodeId": "3G7-0",
+      "title": "44 · Web / Connect extension",
+      "width": 1440,
+      "height": 1012,
+      "elements": 6
+    },
+    {
+      "id": "45-configuration",
+      "nodeId": "3GL-0",
+      "title": "45 · Web / Missing configuration",
+      "width": 1440,
+      "height": 1247,
+      "elements": 18
+    },
+    {
+      "id": "46-library-error",
+      "nodeId": "3HH-0",
+      "title": "46 · Web / Library error boundary",
+      "width": 1440,
+      "height": 1012,
+      "elements": 6
+    },
+    {
+      "id": "47-reference-error",
+      "nodeId": "3HY-0",
+      "title": "47 · Web / Reference error boundary",
+      "width": 1440,
+      "height": 1012,
+      "elements": 8
+    },
+    {
+      "id": "48-library-reference-loading",
+      "nodeId": "3II-0",
+      "title": "48 · Web / Library and reference loading",
+      "width": 1440,
+      "height": 1012,
+      "elements": 6
+    },
+    {
+      "id": "49-verification-send-error",
+      "nodeId": "3J1-0",
+      "title": "49 · Web / Code delivery error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "60-sign-in-pending",
+      "nodeId": "3JN-0",
+      "title": "60 · Web / Signing in",
+      "width": 1440,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "61-sign-in-error",
+      "nodeId": "3KN-0",
+      "title": "61 · Web / Sign-in error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 22
+    },
+    {
+      "id": "62-google-pending",
+      "nodeId": "3LO-0",
+      "title": "62 · Web / Connecting to Google",
+      "width": 1440,
+      "height": 1012,
+      "elements": 19
+    },
+    {
+      "id": "63-google-error",
+      "nodeId": "3MM-0",
+      "title": "63 · Web / Google error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "64-sign-up-pending",
+      "nodeId": "3NL-0",
+      "title": "64 · Web / Creating account",
+      "width": 1440,
+      "height": 1012,
+      "elements": 22
+    },
+    {
+      "id": "65-sign-up-validation",
+      "nodeId": "3OM-0",
+      "title": "65 · Web / Account validation error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 23
+    },
+    {
+      "id": "66-sign-up-error",
+      "nodeId": "3PP-0",
+      "title": "66 · Web / Account creation error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 23
+    },
+    {
+      "id": "67-verification-network-error",
+      "nodeId": "3QS-0",
+      "title": "67 · Web / Verification connection error",
+      "width": 1440,
+      "height": 1012,
+      "elements": 12
+    },
+    {
+      "id": "30-extension-library",
+      "nodeId": "3RE-0",
+      "title": "30 · Extension / Library",
+      "width": 1440,
+      "height": 1012,
+      "elements": 13
+    },
+    {
+      "id": "31-extension-signedout",
+      "nodeId": "3S6-0",
+      "title": "31 · Extension / Signed out",
+      "width": 1440,
+      "height": 1012,
+      "elements": 9
+    },
+    {
+      "id": "32-extension-signin-panel",
+      "nodeId": "3ST-0",
+      "title": "32 · Extension / Sign-in panel",
+      "width": 1440,
+      "height": 1012,
+      "elements": 16
+    },
+    {
+      "id": "33-extension-unconfigured",
+      "nodeId": "3TP-0",
+      "title": "33 · Extension / Account unavailable",
+      "width": 1440,
+      "height": 1012,
+      "elements": 13
+    },
+    {
+      "id": "34-extension-empty-library",
+      "nodeId": "3UH-0",
+      "title": "34 · Extension / Empty account library",
+      "width": 1440,
+      "height": 1012,
+      "elements": 9
+    },
+    {
+      "id": "35-extension-unavailable",
+      "nodeId": "3V4-0",
+      "title": "35 · Extension / Library unavailable",
+      "width": 1440,
+      "height": 1012,
+      "elements": 9
+    },
+    {
+      "id": "36-extension-legacy-import",
+      "nodeId": "3WZ-0",
+      "title": "36 · Extension / Import older saves",
+      "width": 1440,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "37-extension-wrong-owner",
+      "nodeId": "3Y1-0",
+      "title": "37 · Extension / Older saves belong to another account",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "38-extension-signin-pending",
+      "nodeId": "3Z2-0",
+      "title": "38 · Extension / Sign-in pending",
+      "width": 1440,
+      "height": 1012,
+      "elements": 16
+    },
+    {
+      "id": "39-extension-signin-failure",
+      "nodeId": "3ZY-0",
+      "title": "39 · Extension / Sign-in cancelled",
+      "width": 1440,
+      "height": 1012,
+      "elements": 16
+    },
+    {
+      "id": "flat-inspector-04-signin-cancelled",
+      "nodeId": "40U-0",
+      "title": "I04 · Save failure: sign-in cancelled",
+      "width": 1280,
+      "height": 1012,
+      "elements": 81
+    },
+    {
+      "id": "flat-inspector-05-saved",
+      "nodeId": "43U-0",
+      "title": "I05 · Saved reference",
+      "width": 1280,
+      "height": 1012,
+      "elements": 23
+    },
+    {
+      "id": "flat-inspector-06-undone",
+      "nodeId": "44V-0",
+      "title": "I06 · Save undone",
+      "width": 1280,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "flat-inspector-07-network-error",
+      "nodeId": "45T-0",
+      "title": "I07 · Save failure: connection",
+      "width": 1280,
+      "height": 1012,
+      "elements": 81
+    },
+    {
+      "id": "flat-inspector-08-heading",
+      "nodeId": "48T-0",
+      "title": "I08 · Heading inspector",
+      "width": 1280,
+      "height": 1012,
+      "elements": 68
+    },
+    {
+      "id": "flat-inspector-09-parent",
+      "nodeId": "4BD-0",
+      "title": "I09 · Parent traversal",
+      "width": 1280,
+      "height": 1012,
+      "elements": 68
+    },
+    {
+      "id": "flat-inspector-10-narrow",
+      "nodeId": "4DX-0",
+      "title": "I10 · Narrow viewport inspector",
+      "width": 390,
+      "height": 956,
+      "elements": 74
+    },
+    {
+      "id": "flat-inspector-11-saving",
+      "nodeId": "4GO-0",
+      "title": "I11 · Save pending",
+      "width": 1280,
+      "height": 1012,
+      "elements": 74
+    },
+    {
+      "id": "flat-inspector-12-undo-error",
+      "nodeId": "4JF-0",
+      "title": "I12 · Undo save failed",
+      "width": 1280,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "flat-inspector-13-open-library-error",
+      "nodeId": "4KD-0",
+      "title": "I13 · Open library failed",
+      "width": 1280,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "70-extension-refresh-pending",
+      "nodeId": "4LB-0",
+      "title": "70 · Extension / Refresh pending",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "71-extension-refresh-success",
+      "nodeId": "4MC-0",
+      "title": "71 · Extension / Refresh complete",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "72-extension-refresh-failure",
+      "nodeId": "4ND-0",
+      "title": "72 · Extension / Refresh failed",
+      "width": 1440,
+      "height": 1012,
+      "elements": 21
+    },
+    {
+      "id": "73-extension-stale-library",
+      "nodeId": "4OF-0",
+      "title": "73 · Extension / Last loaded references",
+      "width": 1440,
+      "height": 1012,
+      "elements": 14
+    },
+    {
+      "id": "74-extension-signout-pending",
+      "nodeId": "4P8-0",
+      "title": "74 · Extension / Signing out",
+      "width": 1440,
+      "height": 1012,
+      "elements": 14
+    },
+    {
+      "id": "75-extension-signout-complete",
+      "nodeId": "4Q1-0",
+      "title": "75 · Extension / Signed out confirmation",
+      "width": 1440,
+      "height": 1012,
+      "elements": 16
+    },
+    {
+      "id": "76-extension-delete-failure",
+      "nodeId": "4QX-0",
+      "title": "76 · Extension / Delete failed",
+      "width": 1440,
+      "height": 1012,
+      "elements": 46
+    },
+    {
+      "id": "77-extension-undo-failure",
+      "nodeId": "4SV-0",
+      "title": "77 · Extension / Restore failed",
+      "width": 1440,
+      "height": 1012,
+      "elements": 16
+    },
+    {
+      "id": "78-extension-missing-reference",
+      "nodeId": "4TS-0",
+      "title": "78 · Extension / Reference no longer exists",
+      "width": 1440,
+      "height": 1012,
+      "elements": 14
+    },
+    {
+      "id": "79-extension-import-pending",
+      "nodeId": "4UL-0",
+      "title": "79 · Extension / Import pending",
+      "width": 1440,
+      "height": 1012,
+      "elements": 22
+    },
+    {
+      "id": "80-extension-import-failure",
+      "nodeId": "4VO-0",
+      "title": "80 · Extension / Import failed",
+      "width": 1440,
+      "height": 1012,
+      "elements": 22
+    },
+    {
+      "id": "81-extension-import-success",
+      "nodeId": "4WR-0",
+      "title": "81 · Extension / Import complete",
+      "width": 1440,
+      "height": 1012,
+      "elements": 20
+    },
+    {
+      "id": "82-extension-loading",
+      "nodeId": "4XS-0",
+      "title": "82 · Extension / Initial loading",
+      "width": 1440,
+      "height": 1012,
+      "elements": 7
+    }
+  ],
+  "exactBoards": [
+    {
+      "id": "01-sign-in",
+      "nodeId": "4YD-0",
+      "title": "01 · Web / Sign in"
+    },
+    {
+      "id": "02-sign-up",
+      "nodeId": "4YK-0",
+      "title": "02 · Web / Create account"
+    },
+    {
+      "id": "03-auth-error",
+      "nodeId": "4YR-0",
+      "title": "03 · Web / Email confirmation error"
+    },
+    {
+      "id": "04-not-found",
+      "nodeId": "4YY-0",
+      "title": "04 · Web / Missing page"
+    },
+    {
+      "id": "05-mobile-sign-in",
+      "nodeId": "4Z5-0",
+      "title": "05 · Web / Sign in · 390 px"
+    },
+    {
+      "id": "10-web-library",
+      "nodeId": "4ZC-0",
+      "title": "10 · Shared library / Gallery"
+    },
+    {
+      "id": "11-card-hover",
+      "nodeId": "4ZJ-0",
+      "title": "11 · Shared library / Card hover"
+    },
+    {
+      "id": "12-detail-inspect",
+      "nodeId": "4ZQ-0",
+      "title": "12 · Shared library / Information preview"
+    },
+    {
+      "id": "13-detail-layout",
+      "nodeId": "4ZX-0",
+      "title": "13 · Shared library / Layout & context"
+    },
+    {
+      "id": "14-detail-notes",
+      "nodeId": "504-0",
+      "title": "14 · Shared library / Notes"
+    },
+    {
+      "id": "15-delete-dialog",
+      "nodeId": "50B-0",
+      "title": "15 · Shared library / Delete confirmation"
+    },
+    {
+      "id": "16-delete-undo",
+      "nodeId": "50I-0",
+      "title": "16 · Shared library / Undo deletion"
+    },
+    {
+      "id": "17-empty-search",
+      "nodeId": "50P-0",
+      "title": "17 · Shared library / No search results"
+    },
+    {
+      "id": "18-web-account",
+      "nodeId": "50W-0",
+      "title": "18 · Web / Account panel"
+    },
+    {
+      "id": "19-mobile-library",
+      "nodeId": "513-0",
+      "title": "19 · Shared library / Gallery · 390 px"
+    },
+    {
+      "id": "20-mobile-detail",
+      "nodeId": "51A-0",
+      "title": "20 · Shared library / Information · 390 px"
+    },
+    {
+      "id": "30-extension-library",
+      "nodeId": "51H-0",
+      "title": "30 · Extension / Library"
+    },
+    {
+      "id": "31-extension-signedout",
+      "nodeId": "51O-0",
+      "title": "31 · Extension / Signed out"
+    },
+    {
+      "id": "32-extension-signin-panel",
+      "nodeId": "51V-0",
+      "title": "32 · Extension / Sign-in panel"
+    },
+    {
+      "id": "33-extension-unconfigured",
+      "nodeId": "522-0",
+      "title": "33 · Extension / Account unavailable"
+    },
+    {
+      "id": "34-extension-empty-library",
+      "nodeId": "529-0",
+      "title": "34 · Extension / Empty account library"
+    },
+    {
+      "id": "35-extension-unavailable",
+      "nodeId": "52G-0",
+      "title": "35 · Extension / Library unavailable"
+    },
+    {
+      "id": "36-extension-legacy-import",
+      "nodeId": "52N-0",
+      "title": "36 · Extension / Import older saves"
+    },
+    {
+      "id": "37-extension-wrong-owner",
+      "nodeId": "52U-0",
+      "title": "37 · Extension / Older saves belong to another account"
+    },
+    {
+      "id": "38-extension-signin-pending",
+      "nodeId": "531-0",
+      "title": "38 · Extension / Sign-in pending"
+    },
+    {
+      "id": "39-extension-signin-failure",
+      "nodeId": "538-0",
+      "title": "39 · Extension / Sign-in cancelled"
+    },
+    {
+      "id": "40-verify-email",
+      "nodeId": "53F-0",
+      "title": "40 · Web / Verify email"
+    },
+    {
+      "id": "41-verification-sent",
+      "nodeId": "53M-0",
+      "title": "41 · Web / Verification code sent"
+    },
+    {
+      "id": "42-verification-pending",
+      "nodeId": "53T-0",
+      "title": "42 · Web / Verification pending"
+    },
+    {
+      "id": "43-verification-invalid",
+      "nodeId": "540-0",
+      "title": "43 · Web / Invalid verification code"
+    },
+    {
+      "id": "44-extension-consent",
+      "nodeId": "547-0",
+      "title": "44 · Web / Connect extension"
+    },
+    {
+      "id": "45-configuration",
+      "nodeId": "54E-0",
+      "title": "45 · Web / Missing configuration"
+    },
+    {
+      "id": "46-library-error",
+      "nodeId": "54L-0",
+      "title": "46 · Web / Library error boundary"
+    },
+    {
+      "id": "47-reference-error",
+      "nodeId": "54S-0",
+      "title": "47 · Web / Reference error boundary"
+    },
+    {
+      "id": "48-library-reference-loading",
+      "nodeId": "54Z-0",
+      "title": "48 · Web / Library and reference loading"
+    },
+    {
+      "id": "49-verification-send-error",
+      "nodeId": "556-0",
+      "title": "49 · Web / Code delivery error"
+    },
+    {
+      "id": "60-sign-in-pending",
+      "nodeId": "55D-0",
+      "title": "60 · Web / Signing in"
+    },
+    {
+      "id": "61-sign-in-error",
+      "nodeId": "55K-0",
+      "title": "61 · Web / Sign-in error"
+    },
+    {
+      "id": "62-google-pending",
+      "nodeId": "55R-0",
+      "title": "62 · Web / Connecting to Google"
+    },
+    {
+      "id": "63-google-error",
+      "nodeId": "55Y-0",
+      "title": "63 · Web / Google error"
+    },
+    {
+      "id": "64-sign-up-pending",
+      "nodeId": "565-0",
+      "title": "64 · Web / Creating account"
+    },
+    {
+      "id": "65-sign-up-validation",
+      "nodeId": "56C-0",
+      "title": "65 · Web / Account validation error"
+    },
+    {
+      "id": "66-sign-up-error",
+      "nodeId": "56J-0",
+      "title": "66 · Web / Account creation error"
+    },
+    {
+      "id": "67-verification-network-error",
+      "nodeId": "56Q-0",
+      "title": "67 · Web / Verification connection error"
+    },
+    {
+      "id": "70-extension-refresh-pending",
+      "nodeId": "56X-0",
+      "title": "70 · Extension / Refresh pending"
+    },
+    {
+      "id": "71-extension-refresh-success",
+      "nodeId": "574-0",
+      "title": "71 · Extension / Refresh complete"
+    },
+    {
+      "id": "72-extension-refresh-failure",
+      "nodeId": "57B-0",
+      "title": "72 · Extension / Refresh failed"
+    },
+    {
+      "id": "73-extension-stale-library",
+      "nodeId": "57I-0",
+      "title": "73 · Extension / Last loaded references"
+    },
+    {
+      "id": "74-extension-signout-pending",
+      "nodeId": "57P-0",
+      "title": "74 · Extension / Signing out"
+    },
+    {
+      "id": "75-extension-signout-complete",
+      "nodeId": "57W-0",
+      "title": "75 · Extension / Signed out confirmation"
+    },
+    {
+      "id": "76-extension-delete-failure",
+      "nodeId": "583-0",
+      "title": "76 · Extension / Delete failed"
+    },
+    {
+      "id": "77-extension-undo-failure",
+      "nodeId": "58A-0",
+      "title": "77 · Extension / Restore failed"
+    },
+    {
+      "id": "78-extension-missing-reference",
+      "nodeId": "58H-0",
+      "title": "78 · Extension / Reference no longer exists"
+    },
+    {
+      "id": "79-extension-import-pending",
+      "nodeId": "58O-0",
+      "title": "79 · Extension / Import pending"
+    },
+    {
+      "id": "80-extension-import-failure",
+      "nodeId": "58V-0",
+      "title": "80 · Extension / Import failed"
+    },
+    {
+      "id": "81-extension-import-success",
+      "nodeId": "592-0",
+      "title": "81 · Extension / Import complete"
+    },
+    {
+      "id": "82-extension-loading",
+      "nodeId": "599-0",
+      "title": "82 · Extension / Initial loading"
+    },
+    {
+      "id": "inspector-01-active",
+      "nodeId": "59G-0",
+      "title": "I01 · Inspector active"
+    },
+    {
+      "id": "inspector-02-hover",
+      "nodeId": "59N-0",
+      "title": "I02 · Hover font preview"
+    },
+    {
+      "id": "inspector-03-panel",
+      "nodeId": "59U-0",
+      "title": "I03 · Selected element inspector"
+    },
+    {
+      "id": "inspector-04-signin-cancelled",
+      "nodeId": "5A1-0",
+      "title": "I04 · Save failure: sign-in cancelled"
+    },
+    {
+      "id": "inspector-05-saved",
+      "nodeId": "5A8-0",
+      "title": "I05 · Saved reference"
+    },
+    {
+      "id": "inspector-06-undone",
+      "nodeId": "5AF-0",
+      "title": "I06 · Save undone"
+    },
+    {
+      "id": "inspector-07-network-error",
+      "nodeId": "5AM-0",
+      "title": "I07 · Save failure: connection"
+    },
+    {
+      "id": "inspector-08-heading",
+      "nodeId": "5AT-0",
+      "title": "I08 · Heading inspector"
+    },
+    {
+      "id": "inspector-09-parent",
+      "nodeId": "5B0-0",
+      "title": "I09 · Parent traversal"
+    },
+    {
+      "id": "inspector-10-narrow",
+      "nodeId": "5B7-0",
+      "title": "I10 · Narrow viewport inspector"
+    },
+    {
+      "id": "inspector-11-saving",
+      "nodeId": "5BE-0",
+      "title": "I11 · Save pending"
+    },
+    {
+      "id": "inspector-12-undo-error",
+      "nodeId": "5BL-0",
+      "title": "I12 · Undo save failed"
+    },
+    {
+      "id": "inspector-13-open-library-error",
+      "nodeId": "5BS-0",
+      "title": "I13 · Open library failed"
+    }
+  ],
+  "guideBoards": [
+    {
+      "id": "catalog-W",
+      "nodeId": "5F8-0",
+      "title": "State catalog · Web entry and accounts"
+    },
+    {
+      "id": "catalog-L",
+      "nodeId": "5IV-0",
+      "title": "State catalog · Shared library"
+    },
+    {
+      "id": "catalog-I",
+      "nodeId": "5OQ-0",
+      "title": "State catalog · Page inspector"
+    },
+    {
+      "id": "index-editable",
+      "nodeId": "5S3-0",
+      "title": "Glance, as built.",
+      "pageId": "p-2-0"
+    },
+    {
+      "id": "gaps",
+      "nodeId": "5T5-0",
+      "title": "Surfaces still to build.",
+      "pageId": "p-2-0"
+    },
+    {
+      "id": "index-exact",
+      "nodeId": "5U7-0",
+      "title": "Glance in the browser.",
+      "pageId": "p-3-0"
+    }
+  ],
+  "limitations": [
+    "Safe sample data and simulated transport; no real inbox, user creation or production writes.",
+    "Editable imports have font/CSS differences; exact capture page is authoritative.",
+    "Animations, provider/browser-owned UI and some transient/accessibility variants are cataloged without separate stills.",
+    "No marketing landing page exists in the current route tree."
+  ]
+}

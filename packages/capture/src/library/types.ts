@@ -14,7 +14,7 @@ export type LibraryRequest =
   | { type: 'save-reference'; reference: Reference; expectedUserId?: string }
   | { type: 'delete-reference'; id: string; expectedUserId?: string };
 export type LibraryResponse =
-  | { ok: true; cloudState?: LibraryAccount; references?: Reference[]; userId?: string; imported?: number }
+  | { ok: true; redirecting?: boolean; cloudState?: LibraryAccount; references?: Reference[]; userId?: string; imported?: number }
   | { ok: false; error: string; resetLibrary?: boolean };
 /** In-memory view state owned by a mounted app, never persisted to disk. */
 export interface LibraryViewState {

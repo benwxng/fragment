@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getAuth } from '@/lib/auth/server';
+import { pageSession } from '@/lib/auth/page-session';
 import { api } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -7,8 +7,7 @@ export default async function ConnectPage({ searchParams }: { searchParams: Prom
   const params = await searchParams;
   const query = new URLSearchParams(params as Record<string,string>).toString();
   const returnTo = `/extension/connect?${query}`;
-  const { data } = await getAuth().getSession();
-  if (!data?.user) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+  const data = await pageSession(returnTo);
   if (!data.user.emailVerified) redirect(`/verify-email?returnTo=${encodeURIComponent(returnTo)}`);
   async function connect() {
     'use server';

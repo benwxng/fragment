@@ -135,8 +135,8 @@ Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide th
 public `WXT_NEON_API_URL` and `WXT_SITE_URL`. Rebuild the extension, open its account
 menu, and choose **Sign in or create account**. Sign in on the website and approve the extension.
 
-When developing with `pnpm dev:web`, run `pnpm --filter @refer/extension build:local`
-to connect the unpacked Chrome extension through `http://localhost:3000`. This keeps
+When developing with `pnpm dev:web --port 3001`, run `pnpm --filter @refer/extension build:local`
+to connect the unpacked Chrome extension through `http://localhost:3001`. This keeps
 the configured backend and saved data; it only changes the sign-in website. Keep
 the web server running, reload Glance in `chrome://extensions`, and reopen its
 library after rebuilding. Use the regular `pnpm build` for the hosted website.

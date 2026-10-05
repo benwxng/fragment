@@ -99,6 +99,11 @@ try {
   const installFixture = ({ references: initial, cloudState }: any) => {
     let references = initial;
     const respond = async (message: any) => {
+      const failure = (window as any).__libraryFailure;
+      if (failure === 'unavailable' && message.type === 'get-cloud-state') return { ok: false, error: 'Temporary account outage' };
+      if (failure === 'signed-out' && message.type === 'get-cloud-state') return { ok: true, cloudState: {
+        ...cloudState, authStatus: 'signed-out', userId: null, email: null,
+      } };
       switch (message.type) {
         case 'get-cloud-state': return { ok: true, cloudState };
         case 'list-references': return { ok: true, references, userId: 'preview' };
@@ -162,7 +167,6 @@ try {
     for (const page of [web, extension]) {
       const card = page.locator('.reference-card').first();
       await card.hover();
-      assert.equal(await card.locator('.card-body').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0.15)');
       assert.equal(await card.locator('.card-meta > span').count(), 0);
       const source = card.locator('.card-source');
       const sourceUrl = await source.getAttribute('href');
@@ -182,8 +186,9 @@ try {
       await page.locator('#search').fill('no matching reference');
       assert.equal(await page.locator('.reference-card').count(), 0);
       await page.locator('#clear-filters').click();
-      await page.locator('[data-filter="layout"]').click();
-      assert.equal(await page.locator('.reference-card').count(), 2);
+      assert.equal(await page.locator('.filters').count(), 0);
+      const galleryCount = await page.locator('.reference-card').count();
+      assert(galleryCount > 0);
       for (const returnLink of ['[data-close-detail]', '.brand']) {
         const originalCard = await page.locator('.reference-card').first().elementHandle();
         const libraryUrl = page.url();
@@ -199,14 +204,12 @@ try {
         assert.equal(page.url(), libraryUrl);
         assert.equal(await page.evaluate(() => performance.timeOrigin), timeOrigin, 'Returning to the library must not reload the page');
         assert(await originalCard!.evaluate(card => card.isConnected), 'Returning must reuse the loaded cards');
-        assert.equal(await page.locator('[data-filter="layout"]').getAttribute('aria-pressed'), 'true');
-        assert.equal(await page.locator('.reference-card').count(), 2);
+        assert.equal(await page.locator('.reference-card').count(), galleryCount);
         await page.locator('.brand').click();
         assert.equal(page.url(), libraryUrl, 'Clicking the logo in the gallery must stay in the gallery');
         assert(await originalCard!.evaluate(card => card.isConnected));
         await originalCard!.dispose();
       }
-      await page.locator('[data-filter="all"]').click();
       await page.locator('.card-open').first().click();
       await page.locator('#detail-page').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#main-content').isVisible(), false);
@@ -260,9 +263,26 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     }
   }
+  // The shared renderer must preserve the current view during outages, but clear it on real sign-out.
+  await extension.reload();
+  await extension.locator('.card-open').first().click();
+  await extension.locator('#detail-page').waitFor({ state: 'visible' });
+  const selectedTitle = await extension.locator('#detail-title').innerText();
+  await extension.evaluate(() => { (window as any).__libraryFailure = 'unavailable'; window.dispatchEvent(new Event('focus')); });
+  await extension.waitForFunction(() => document.querySelector('#detail-feedback')!.textContent!.includes('Unable to refresh'));
+  assert.equal(await extension.locator('#detail-page').isVisible(), true);
+  assert.equal(await extension.locator('#detail-title').innerText(), selectedTitle);
+  assert.equal(await extension.locator('.reference-card').count(), 3);
+  await extension.evaluate(() => { (window as any).__libraryFailure = undefined; window.dispatchEvent(new Event('focus')); });
+  await extension.waitForFunction(() => document.querySelector('#detail-feedback')!.textContent === '');
+  assert.equal(await extension.locator('#detail-title').innerText(), selectedTitle);
+  await extension.evaluate(() => { (window as any).__libraryFailure = 'signed-out'; window.dispatchEvent(new Event('focus')); });
+  await extension.waitForFunction(() => document.querySelectorAll('.reference-card').length === 0);
+  assert.equal(await extension.locator('#detail-page').isVisible(), false);
+  assert.equal(await extension.locator('#empty-title').innerText(), 'Sign in to your library');
   // Mixed aspect ratios exercise the actual shared renderer and resize observer.
   await extension.setViewportSize({ width: 1440, height: 1000 });
-  await extension.reload();
+  await extension.goto(`chrome-extension://${extensionId}/library.html`);
   await extension.locator('.reference-card').first().waitFor();
   await extension.evaluate(async (reference) => {
     for (const [index, height] of [900, 100, 220, 150, 380, 90, 260].entries()) {
@@ -294,7 +314,7 @@ try {
   })));
   await extension.screenshot({ path: '/tmp/glance-parity/masonry-mixed.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('Shared library passed: pixel-identical desktop/mobile gallery and detail pages, deep-link reload, Back/Forward, search, filters, delete/undo, keyboard focus, and no overflow. Preview data only.');
+  console.log('Shared library passed: pixel-identical desktop/mobile gallery and detail pages, deep-link reload, Back/Forward, search, hidden filter bar, delete/undo, keyboard focus, and no overflow. Preview data only.');
 } finally {
   await context.close();
   await rm(profile, { recursive: true, force: true });

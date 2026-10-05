@@ -1,18 +1,17 @@
-import { readReferences, uploadReference, type LibraryConnection } from '@refer/capture/library/data';
+import { LibraryImageCache, readReferences, uploadReference, type LibraryConnection } from '@refer/capture/library/data';
 import type { LibraryAdapter, LibraryAccount } from '@refer/capture/library/types';
 import { signOut } from '@/app/actions';
 
 class LibrarySessionError extends Error {}
 
 export function webLibraryAdapter(initialReferenceId?: string): LibraryAdapter {
+  const images = new LibraryImageCache();
   async function request(path: string, options: RequestInit = {}, owner?: string) {
     const response = await fetch('/api/library' + path, {
       ...options, cache: 'no-store', signal: AbortSignal.timeout(30_000),
       headers: { ...options.headers, ...(owner ? { 'x-library-owner': owner } : {}) },
     });
     if (response.status === 401) {
-      // The login page redirects an existing session back to the library.
-      // A rejected API token must not start a library → login → library loop.
       throw new LibrarySessionError('Your session has ended. Sign in to access your library.');
     }
     if (!response.ok) {
@@ -49,14 +48,14 @@ export function webLibraryAdapter(initialReferenceId?: string): LibraryAdapter {
     async request(message) {
       try {
         switch (message.type) {
-          case 'cloud-sign-in': window.location.assign('/login'); return { ok: true };
-          case 'cloud-sign-out': await signOut(); return { ok: true };
+          case 'cloud-sign-in': window.location.assign('/login'); return { ok: true, redirecting: true };
+          case 'cloud-sign-out': images.clear(); await signOut(); return { ok: true };
           case 'get-cloud-state': {
             const { user } = await connection();
             const cloudState: LibraryAccount = { configured: true, authStatus: 'signed-in', userId: user.id, email: user.email, image: user.image ?? null, legacyCount: 0, legacyBlocked: false };
             return { ok: true, cloudState };
           }
-          case 'list-references': return { ok: true, ...await readReferences(await connection()) };
+          case 'list-references': return { ok: true, ...await readReferences(await connection(), images) };
           case 'delete-reference': {
             const { user } = await connection(message.expectedUserId);
             await request('/captures/' + encodeURIComponent(message.id), { method: 'DELETE' }, user.id);
@@ -67,10 +66,10 @@ export function webLibraryAdapter(initialReferenceId?: string): LibraryAdapter {
         }
       } catch (error) {
         if (error instanceof LibrarySessionError) {
-          if (message.type === 'get-cloud-state') return { ok: true, cloudState: {
-            configured: true, authStatus: 'signed-out', userId: null, email: null, legacyCount: 0, legacyBlocked: false,
-          } };
-          return { ok: false, error: error.message, resetLibrary: true };
+          images.clear();
+          const returnTo = (window.location.pathname || '/library') + (window.location.search || '');
+          window.location.replace(`/login?reauth=1&returnTo=${encodeURIComponent(returnTo)}`);
+          return { ok: true, redirecting: true };
         }
         return { ok: false, error: error instanceof Error ? error.message : 'Unable to access your library.' };
       }

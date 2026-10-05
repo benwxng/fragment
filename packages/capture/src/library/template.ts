@@ -31,12 +31,12 @@ export const libraryTemplate = /* html */ `
 
       <section class="library" aria-labelledby="references-heading">
         <h2 class="visually-hidden" id="references-heading">Saved references</h2>
+        <!-- Filter bar temporarily disabled; keep the markup for its return.
         <div class="toolbar">
-
-
           <div class="filters" role="group" aria-label="Filter references">
           </div>
         </div>
+        -->
 
         <div class="result-summary" id="result-summary" role="status" aria-live="polite"></div>
         <div class="reference-grid" id="reference-grid" aria-busy="true"></div>
@@ -74,13 +74,11 @@ export const libraryTemplate = /* html */ `
         <button class="icon-button account-close" id="account-close" type="button" aria-label="Close account settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
         </button>
-        <p class="eyebrow">Your account</p>
         <h2 id="account-title" class="visually-hidden">Account</h2>
         <p class="account-copy" id="account-copy">Checking your account…</p>
 
         <form class="sign-in-form" id="sign-in-form" hidden>
-          <button class="button button-primary" id="sign-in-button" type="submit">Sign in or create account</button>
-          <p>Sign in with Google or email in the web library.</p>
+          <button class="button button-primary" id="sign-in-button" type="submit">Sign in</button>
         </form>
 
         <div class="signed-in-panel" id="signed-in-panel" hidden>

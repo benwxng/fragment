@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ token: vi.fn() }));
-vi.mock('@/lib/auth/server', () => ({ getAuth: () => ({ token: mocks.token }) }));
+const mocks = vi.hoisted(() => ({ token: vi.fn(), getSession: vi.fn() }));
+vi.mock('@/lib/auth/server', () => ({ getAuth: () => mocks }));
 import { GET, PUT, DELETE } from './[...path]/route';
 
 const id = '018f37b2-a1f0-7d8c-9b1e-9ca6155c8bc9';
@@ -10,6 +10,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv('NEON_FUNCTION_API_BASE_URL', 'https://api.example.test');
   mocks.token.mockResolvedValue({ data: { token: 'server-secret' } });
+  mocks.getSession.mockResolvedValue({ data: null, error: null });
   vi.stubGlobal('fetch', upstream);
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
@@ -32,6 +33,44 @@ describe('shared library web transport', () => {
     const response = await GET(new Request('https://glance.test/api/library/me'), context('me'));
     expect(response.status).toBe(401);
     expect(upstream).not.toHaveBeenCalled();
+  });
+  it('recovers a temporary token failure without requiring another login', async () => {
+    mocks.token.mockResolvedValueOnce({ data: null, error: { status: 502 } });
+    upstream.mockResolvedValue(Response.json({ user: { id: 'owner' } }));
+    const response = await GET(new Request('https://glance.test/api/library/me'), context('me'));
+    expect(response.status).toBe(200);
+    expect(mocks.token).toHaveBeenCalledTimes(2);
+  });
+  it('does not sign out a valid browser session when the backend rejects its JWT', async () => {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: 'owner' } } });
+    upstream.mockResolvedValue(Response.json({ error: 'Session expired' }, { status: 401 }));
+    const response = await GET(new Request('https://glance.test/api/library/me'), context('me'));
+    expect(response.status).toBe(503);
+    expect(mocks.getSession).toHaveBeenCalledWith({ query: { disableCookieCache: 'true' } });
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+  it('keeps a backend rejection temporary when the browser session cannot be checked', async () => {
+    mocks.getSession.mockResolvedValue({ data: null, error: { status: 502 } });
+    upstream.mockResolvedValue(Response.json({}, { status: 401 }));
+    expect((await GET(new Request('https://glance.test/api/library/me'), context('me'))).status).toBe(503);
+  });
+  it('still clears an explicitly ended browser session after a backend rejection', async () => {
+    upstream.mockResolvedValue(Response.json({}, { status: 401 }));
+    expect((await GET(new Request('https://glance.test/api/library/me'), context('me'))).status).toBe(401);
+  });
+  it('does not replay a mutation when the owner check fails', async () => {
+    mocks.getSession.mockResolvedValue({ data: { user: { id: 'owner' } } });
+    upstream.mockResolvedValue(Response.json({}, { status: 401 }));
+    const response = await DELETE(new Request('https://glance.test/api/library/captures/' + id, {
+      method: 'DELETE', headers: { origin: 'https://glance.test', 'x-library-owner': 'owner' },
+    }), context('captures/' + id));
+    expect(response.status).toBe(503);
+    expect(upstream).toHaveBeenCalledTimes(1);
+    expect(upstream.mock.calls[0]?.[1].method).toBeUndefined();
+  });
+  it('reports a network failure without inventing a sign-out', async () => {
+    upstream.mockRejectedValue(new TypeError('fetch failed'));
+    expect((await GET(new Request('https://glance.test/api/library/me'), context('me'))).status).toBe(503);
   });
   it('does not proxy arbitrary API paths', async () => {
     const response = await GET(new Request('https://glance.test/api/library/extension/session'), context('extension/session'));

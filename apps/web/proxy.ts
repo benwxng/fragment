@@ -3,12 +3,11 @@ import { isNeonConfigured } from '@/lib/config';
 import { getAuth } from '@/lib/auth/server';
 export async function proxy(request: NextRequest) {
   if (!isNeonConfigured()) return NextResponse.next();
-  // Library pages contain only the public UI shell. Their account data is
-  // authenticated by /api/library on every request. Avoid treating an auth
-  // service outage during navigation or Fast Refresh as a sign-out.
-  // OAuth callbacks must still pass through Neon to exchange the verifier.
-  if ((request.nextUrl.pathname === '/library' || request.nextUrl.pathname.startsWith('/library/'))
-    && !request.nextUrl.searchParams.has('neon_auth_session_verifier')) return NextResponse.next();
+  // The SDK middleware turns an upstream outage into a login redirect. Let
+  // pages/API handlers distinguish unavailable auth from an ended session.
+  // Library pages are public shells; Home/Connect still authenticate on the server.
+  // Keep the SDK's OAuth verifier exchange intact.
+  if (!request.nextUrl.searchParams.has('neon_auth_session_verifier')) return NextResponse.next();
   const loginUrl = request.nextUrl.pathname === '/extension/connect'
     ? `/login?returnTo=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`
     : '/login';

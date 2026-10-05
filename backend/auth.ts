@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, jwtVerify, errors } from 'jose';
 import { pool } from './db';
 import { HttpError } from './validation';
 
@@ -29,8 +29,20 @@ export async function identify(request: Request): Promise<Identity> {
     });
     sub = payload.sub;
   } catch (error) {
-    console.warn('JWT verification rejected', { code: (error as { code?: string }).code });
-    throw new HttpError(401, 'Your session expired. Sign in again.');
+    const invalidToken = error instanceof errors.JWTExpired
+      || error instanceof errors.JWTClaimValidationFailed
+      || error instanceof errors.JWSSignatureVerificationFailed
+      || error instanceof errors.JWSInvalid
+      || error instanceof errors.JWTInvalid
+      || error instanceof errors.JOSEAlgNotAllowed
+      || error instanceof errors.JOSENotSupported
+      || error instanceof errors.JWKSNoMatchingKey;
+    // A key-server outage is not evidence that the user's credentials expired.
+    // Keep the request denied, but let clients retain their session and retry.
+    console.warn(JSON.stringify({ event: 'auth.jwt_verification_failed',
+      code: (error as { code?: string }).code, status: invalidToken ? 401 : 503 }));
+    throw new HttpError(invalidToken ? 401 : 503, invalidToken
+      ? 'Your session expired. Sign in again.' : 'Unable to verify your account right now. Please try again.');
   }
   if (!sub) throw new HttpError(401, 'Missing user identity.');
   const db = await pool.connect();

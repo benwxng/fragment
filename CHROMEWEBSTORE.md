@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Glance
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
 ## Store listing
 
@@ -41,6 +41,20 @@ Privacy policy URL, publisher contact, support URL, distribution regions, and fi
 
 ## Version history
 
+Sign-in failures explain how to retry, and retrying a save clears the previous error while the sign-in window opens. The local development build uses the sign-in site on port 3001 (2026-10-05, draft).
+
+Logged-out library users go directly to the web sign-in page. Expired web sessions preserve the requested destination and show sign-in without redirecting back through a stale session (2026-10-05, draft).
+
+The account popover uses concise sign-in copy and a single action, with a compact layout shared by both libraries (2026-10-05, draft).
+
+Gallery screenshot previews have a bounded height and preserve the entire image, preventing tall captures from dominating either library. Full captures remain available in the detail view (2026-10-05, draft).
+
+Inspector tracking displays letter spacing as a percentage of the computed font size, retaining “Normal” for normal spacing (2026-10-05, draft).
+
+Inspector box properties use a compact nested margin, border, padding, and content diagram with per-side pixel values. Labels share the top-value row, and zero-width borders are omitted from the diagram. The diagram and detail rows align with the other inspector content columns. Radius and border style remain below the diagram (2026-10-04, draft).
+
+The inspector toolbar uses a simple green status dot again; the pointer-following eye, blink, and asterisk animation have been removed (2026-10-04, draft).
+
 The inspector toolbar stays visible during saving unless it overlaps the screenshot crop. Capture UI is restored immediately after the browser screenshot, before image encoding and upload (2026-10-04, draft).
 
 The enlarged inspector toolbar uses the Glance eye logo. Its pupil follows the pointer; clicking a page element triggers a blink and a 90-degree asterisk turn. Decorative motion respects reduced-motion preferences (2026-10-04, draft).
@@ -55,6 +69,8 @@ Saved-card images and hover effects share one rounded clipping boundary, with th
 
 Saved-card hover titles have a 6px backdrop blur that fades away within the top 7rem of the card (2026-10-04, draft).
 
+Page backgrounds are now light gray (#F5F5F5) (2026-10-04, draft). Refresh library screenshots.
+
 Saved-card hover titles slide down into place. The source-domain line below the font name is removed; the source button remains (2026-10-04, draft).
 
 Saved-card hover overlays fade from 40% black at the top to transparent at 75% of the card height in both libraries (2026-10-04, draft).
@@ -67,7 +83,9 @@ Inspector panel corners use a 4px radius (2026-10-03, draft). Refresh inspector 
 
 Inspector panel starts directly with Type; remove the element-name and pixel-dimension header (2026-10-03, draft). Refresh inspector screenshots.
 
-Card overlays use 15% black, show the font name without a date, and include a solid white button with a black arrow to open the source site in a new tab (2026-10-02, draft). Refresh library screenshots.
+Web sign-in no longer displays a false account-status error while opening the login page. The library filter bar is temporarily hidden with its markup preserved for later. Card overlays use 15% black, show the font name without a date, and include a solid white button with a black arrow to open the source site in a new tab (2026-10-02, draft). Refresh library screenshots.
+
+Account checks distinguish service interruptions from expired sessions, retry temporary token failures, and reuse unchanged saved images after authenticated refreshes (2026-10-02, draft).
 
 Temporary connection failures keep the last loaded library visible. Overlapping refreshes are combined, and the web library retains its loaded view during routine code updates (2026-10-02, draft).
 
@@ -96,4 +114,32 @@ The temporary save-feedback preview panel has been removed from the inspector; n
 | 0.1.0 | 2026-10-02 | Enlarge the transparent eye icon to fill the available width in browser extension menus; refresh icon artwork. | Draft |
 | 0.1.0 | 2026-10-02 | Show card details inside a dark hover or keyboard-focus overlay on both libraries, with an in-card touch fallback; refresh library screenshots. | Draft |
 | 0.1.0 | 2026-10-02 | Soften card hover overlays with a lighter gradient and gentle fade and text motion; respect reduced-motion settings. | Draft |
+
+## Launch audit — October 4, 2026
+
+**Status: not ready to submit.** See [the evidence-backed launch audit](docs/audits/2026-10-04-chrome-store-readiness.md) for findings and verification. This section supplements the existing draft and history; no submission was made.
+
+### Submission gates
+
+- [ ] Publish a public privacy policy and Limited Use statement; supply its URL here and in the dashboard.
+- [ ] Confirm production Google OAuth/email configuration and test real new-user verification and saving from a fresh Chrome profile.
+- [ ] Fix the release verifier's old `Refer — Design Inspector` assertion; regenerate and verify the release ZIP. Existing September 25 ZIPs are stale and still identify themselves as Refer.
+- [ ] Supply publisher name, verified contact email, support route, visibility and regions; confirm developer registration and 2-Step Verification.
+- [ ] Create a **440×280 promotional tile (required)** and at least one current **1280×800 or 640×400 screenshot**. The 128×128 PNG exists and its dimensions were verified. [Official image requirements](https://developer.chrome.com/docs/webstore/images).
+- [ ] Review obsolete `alarms` access and whether the website host permission is necessary.
+- [ ] Remove the current filter feature claim from submission copy while the shared filter bar is commented out. Do not advertise offline account saving or a persistent cache of new saves.
+- [ ] Add reviewer instructions for inspection, account creation/verification, extension approval, saving, viewing, deletion and sign-out.
+
+### Draft disclosure mapping
+
+The extension handles user data. Proposed dashboard categories are personally identifiable information (email/account identity), authentication information (login and session credentials), web history (only saved source URLs/titles), and website content (selected text/design properties/screenshots). Assess the user-activity category against saved actions/timestamps. No dedicated health, financial, communications or location collector was found, but selected website content can contain these incidentally. No general browsing analytics collector was found.
+
+Saving uploads selected references and screenshot crops to the account service; session/import state is also handled locally. Policy text must name actual service providers, describe retention/backups/deletion and cover operational logs. Privacy safeguards do not guarantee removal of all sensitive page content. Owner confirmation is required for the business commitments below, not for finishing this draft:
+
+- [ ] No sale of user data.
+- [ ] No use or transfer unrelated to Glance's disclosed purpose.
+- [ ] No creditworthiness/lending use.
+- [ ] Staff access and provider processing follow the published Limited Use commitments.
+
+[Chrome privacy disclosures](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy), [privacy policy requirements](https://developer.chrome.com/docs/webstore/program-policies/privacy), and [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use).
 | 0.1.0 | 2026-10-02 | Add a thin gray search border, quick expansion, and gradual background fading while search is focused on both libraries; refresh library screenshots. | Draft |

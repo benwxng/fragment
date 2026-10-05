@@ -56,6 +56,13 @@ async function serveFixture() {
     if (path === '/me') return json({ user: { id: accountId, email: otherAccount ? 'other@example.com' : 'fixture@example.com' } });
     if (path === '/library-sync') return json({ userId: accountId, complete: true, captures: otherAccount ? [] : [...captures.values()] });
     if (path === '/extension/session') return json({ ok: true });
+    if (path === '/extension/exchange') return json({
+      token: 'isolated-test-session', expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+    if (path === '/login') {
+      response.writeHead(200, { 'Content-Type': 'text/html' }).end('<h1>Sign in</h1>');
+      return;
+    }
     if (path.startsWith('/screenshots/')) {
       if (request.method === 'PUT') {
         const chunks = [];
@@ -224,13 +231,38 @@ async function main() {
     await page.locator('h1').click(); // Second click saves the locked card, not the newly hovered heading.
     await toast.waitFor({ state: 'visible', timeout: 10_000 });
     assert.match((await toast.textContent()) ?? '', /cancelled/i);
+    assert.doesNotMatch(await host.locator('.chip').textContent(), /Saving/);
     assert.equal(fixture.captures.size, 0);
     assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
 
-    await worker.evaluate(() => chrome.storage.local.set({ 'refer-neon-session': {
-      token: 'isolated-test-session', expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    } }));
+    // The browser's native load failure should explain sign-in and release the save state.
+    await worker.evaluate(() => {
+      chrome.identity.launchWebAuthFlow = async () => { throw new Error('Authorization page could not be loaded.'); };
+    });
     await host.locator('button.retry').click();
+    await toast.getByText('Unable to open Glance sign-in. Check your connection and try again.').waitFor();
+    assert.doesNotMatch(await host.locator('.chip').textContent(), /Saving/);
+    assert.equal(fixture.captures.size, 0);
+
+    // A successful retry signs in and resumes the selected save without pre-seeding a session.
+    await worker.evaluate(() => {
+      let started;
+      globalThis.smokeSignInStarted = new Promise(resolve => { started = resolve; });
+      chrome.identity.launchWebAuthFlow = ({ url, interactive }) => new Promise(resolve => {
+        if (!interactive) throw new Error('Saving while signed out must prompt for sign-in');
+        const authUrl = new URL(url);
+        const callback = new URL(authUrl.searchParams.get('redirect_uri'));
+        callback.searchParams.set('state', authUrl.searchParams.get('state'));
+        callback.searchParams.set('code', 'fixture-code');
+        globalThis.smokeCompleteSignIn = () => resolve(callback.href);
+        started();
+      });
+    });
+    await host.locator('button.retry').click();
+    await worker.evaluate(() => globalThis.smokeSignInStarted);
+    assert.equal(await toast.isVisible(), false, 'Retry must clear the previous error while sign-in is open');
+    assert.match(await host.locator('.chip').textContent(), /Saving/);
+    await worker.evaluate(() => globalThis.smokeCompleteSignIn());
     await page.waitForFunction(() => document.querySelector('#__refer_design_inspector__')?.shadowRoot?.querySelector('.toast')?.textContent?.includes('Saved to your library'));
     assert.match((await toast.textContent()) ?? '', /Saved/i);
     assert.equal(fixture.captures.size, 1);
@@ -264,11 +296,8 @@ async function main() {
     assert.equal(await library.locator('.card-meta > span').count(), 0);
     assert.equal(await library.locator('.card-source').getAttribute('href'), fixture.url);
     assert.equal(await library.locator('.media-meta').count(), 0);
-    assert.deepEqual(await library.locator('[data-filter]').allTextContents(), ['All', 'Type', 'Components', 'Colors', 'Layout']);
+    assert.equal(await library.locator('[data-filter]').count(), 0);
     assert.equal(await library.locator('.card-media').evaluate((element) => getComputedStyle(element).borderRadius), '4px');
-    await library.locator('[data-filter=layout]').click();
-    assert.equal(await library.locator('[data-filter=layout]').getAttribute('aria-pressed'), 'true');
-    await library.locator('[data-filter=all]').click();
     await library.locator('.reference-card').waitFor({ state: 'visible' });
 
     await library.locator('.card-open').click();
@@ -281,7 +310,7 @@ async function main() {
     assert.equal(fixture.captures.size, 1);
     await library.locator('#account-button').click();
     await library.locator('#sign-out').click();
-    await library.waitForFunction(() => document.querySelector('#account-button-label')?.textContent === 'Sign in');
+    await library.waitForURL(`${fixture.origin}/login?reauth=1`);
     assert.equal(await library.locator('.reference-card').count(), 0);
     assert.equal(fixture.captures.size, 1);
     assert.deepEqual(await worker.evaluate(() => indexedDB.databases()), []);
@@ -289,6 +318,7 @@ async function main() {
     await worker.evaluate(() => chrome.storage.local.set({ 'refer-neon-session': {
       token: 'other-test-session', expiresAt: new Date(Date.now() + 60_000).toISOString(),
     } }));
+    await library.goto(`chrome-extension://${extensionId}/library.html`);
     await library.waitForFunction(() => document.querySelector('#account-button-label')?.textContent === 'other@example.com');
     assert.equal(await library.locator('.reference-card').count(), 0);
     assert.equal(fixture.captures.size, 1);
@@ -302,7 +332,7 @@ async function main() {
       'Refer extension smoke test passed.',
       `  browser: ${browserExecutable || 'Playwright Chrome for Testing'}`,
       `  extension: ${extensionId}`,
-      '  verified: font-only hover, animated first-click inspection, locked selection, second-click save, keyboard/reduced-motion flow, cancelled sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, cleanup',
+      '  verified: font-only hover, animated first-click inspection, locked selection, second-click save, keyboard/reduced-motion flow, cancelled/unavailable sign-in, retry and save after sign-in, cloud save and screenshot, delete/undo, sign-out and account-switch clearing, no IndexedDB, cleanup',
       '  backend: isolated local fixture; no production accounts or data used',
       '',
     ].join('\n'));

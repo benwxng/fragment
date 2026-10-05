@@ -22,7 +22,7 @@
     "typecheck": "pnpm -r typecheck && pnpm typecheck:backend",
     "smoke:cloud:legacy": "node scripts/smoke-cloud.mjs",
     "db:migrate": "node --env-file=.env.local scripts/migrate-neon.mjs",
-    "test:backend": "vitest run backend/validation.test.ts",
+    "test:backend": "vitest run backend",
     "typecheck:backend": "tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --esModuleInterop backend/api.ts neon.ts"
   },
   "devDependencies": {

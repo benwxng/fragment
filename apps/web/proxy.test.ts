@@ -47,7 +47,7 @@ describe('Google OAuth callback routing', () => {
     expect(response.headers.get('set-cookie')).toContain('session_token=test-session');
   });
 
-  it.each(['/library', '/library/example'])('serves the public library shell at %s without depending on auth availability', async (path) => {
+  it.each(['/', '/library', '/library/example', '/extension/connect'])('lets the page/API at %s decide auth failures without a middleware login redirect', async (path) => {
     const upstream = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
     vi.stubGlobal('fetch', upstream);
     const response = await proxy(new NextRequest('http://localhost:3000' + path));
@@ -56,11 +56,10 @@ describe('Google OAuth callback routing', () => {
     expect(upstream).not.toHaveBeenCalled();
   });
 
-  it('preserves the extension handshake when sign-in is required', async () => {
+  it('preserves the extension handshake for its authenticated page handler', async () => {
     const returnTo = '/extension/connect?redirect_uri=https%3A%2F%2Ftest.chromiumapp.org%2F&challenge=test-challenge&state=test-state';
     const response = await proxy(new NextRequest(`http://localhost:3000${returnTo}`));
-    const login = new URL(response.headers.get('location')!);
-    expect(login.pathname).toBe('/login');
-    expect(login.searchParams.get('returnTo')).toBe(returnTo);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('x-middleware-next')).toBe('1');
   });
 });

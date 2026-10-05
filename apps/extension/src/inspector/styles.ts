@@ -99,12 +99,16 @@ export const inspectorStyles = String.raw`
     white-space: nowrap;
   }
 
-  .toolbar-eye { display: block; width: 38px; height: 20px; flex: 0 0 auto; pointer-events: none; }
-  .toolbar-eye svg { display: block; width: 100%; height: 100%; overflow: visible; }
-  .toolbar-eye-lid { transform-origin: 50px 21px; }
-  .toolbar-eye-pupil { transform: translate(0px, 0px); }
-  .toolbar-eye-asterisk { transform-box: fill-box; transform-origin: center; transform: rotate(0deg); }
   .chip button { min-block-size: 34px; padding-inline: 12px; font-size: 13px; border-radius: 12px; }
+
+  .status-dot {
+    inline-size: 7px;
+    block-size: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--refer-accent);
+    box-shadow: 0 0 0 3px rgba(166, 244, 197, 0.12);
+  }
 
   .chip-label {
     margin-inline: 2px 4px;
@@ -228,6 +232,33 @@ export const inspectorStyles = String.raw`
     white-space: nowrap;
   }
 
+  .box-section { row-gap: 8px; }
+  .box-section > .section-title { grid-column: 1; grid-row: 1 / span 2; }
+  .box-section > .box-diagram { grid-column: 2; grid-row: 1; }
+  .box-section > .values { grid-column: 2; grid-row: 2; }
+  .box-diagram { min-width: 0; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .box-layer {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) 18px;
+    grid-template-rows: 18px minmax(0, auto) 18px;
+    min-width: 0;
+    border: 1px dashed #66685f;
+    border-radius: 4px;
+    background: #252620;
+  }
+  .box-border { border-style: solid; border-color: #62695c; background: #30362c; }
+  .box-padding { border-color: #6c8d75; background: #354b3c; }
+  .box-label { grid-area: 1 / 1 / 2 / 4; align-self: center; justify-self: start; padding: 0 6px; color: #c5cabf; font-size: 9px; }
+  .box-side { min-width: 0; align-self: center; text-align: center; color: var(--refer-ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; overflow-wrap: anywhere; line-height: 1.2; }
+  .box-top { grid-area: 1 / 2; }
+  .box-right { grid-area: 2 / 3; }
+  .box-bottom { grid-area: 3 / 2; }
+  .box-left { grid-area: 2 / 1; }
+  .box-inner { grid-area: 2 / 2; min-width: 0; }
+  .box-content { display: grid; gap: 2px; min-height: 34px; padding: 3px; place-content: center; border: 1px solid #789e85; border-radius: 2px; background: #18291e; text-align: center; }
+  .box-content > span:first-child { color: #b2c9b8; font-size: 9px; }
+  .box-dimensions { color: var(--refer-accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; overflow-wrap: anywhere; }
+
   .swatch-line {
     display: flex;
     min-inline-size: 0;
@@ -341,8 +372,6 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .toolbar-eye-pupil { transition: transform 160ms cubic-bezier(0.2, 0, 0, 1); }
-    .toolbar-eye-asterisk { transition: transform 280ms cubic-bezier(0.23, 1, 0.32, 1); }
 
     .chip {
       opacity: 1;
@@ -406,6 +435,9 @@ export const inspectorStyles = String.raw`
   }
 
   @media (forced-colors: active) {
+    .box-layer, .box-content { background: Canvas; border-color: CanvasText; }
+    .box-label, .box-side, .box-content > span, .box-dimensions { color: CanvasText; }
+
     :host {
       --refer-ink: CanvasText;
       --refer-muted: CanvasText;
@@ -440,7 +472,6 @@ export const inspectorStyles = String.raw`
 
   @media (max-width: 420px) {
     .chip { gap: 4px; padding-inline-start: 8px; max-width: calc(100vw - 16px); }
-    .toolbar-eye { width: 28px; }
     .chip-label { font-size: 12px; }
     .chip button { padding-inline: 8px; font-size: 12px; }
   }

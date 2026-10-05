@@ -47,12 +47,30 @@ export async function uploadReference(current: LibraryConnection, reference: Ref
 }
 
 
-export async function readReferences({ client, user }: LibraryConnection): Promise<{ references: Reference[]; userId: string }> {
+/** Reuse unchanged image bytes only after an authenticated, complete library listing. */
+export class LibraryImageCache {
+  private owner: string | undefined;
+  private generation = 0;
+  private images = new Map<string, string>();
+  clear() { this.generation++; this.owner = undefined; this.images.clear(); }
+  forAccount(owner: string) {
+    if (this.owner !== owner) { this.clear(); this.owner = owner; }
+    const generation = this.generation;
+    const images = this.images;
+    return { images, commit: (next: Map<string, string>) => {
+      if (generation === this.generation) this.images = next;
+    } };
+  }
+}
+
+export async function readReferences({ client, user }: LibraryConnection, cache?: LibraryImageCache): Promise<{ references: Reference[]; userId: string }> {
+  const cached = cache?.forAccount(user.id);
   const result = await client.listLibrary();
   if (!result.complete || result.userId !== user.id || !Array.isArray(result.captures)) {
     throw new Error('Unable to load the complete account library. Try again.');
   }
   const references: Reference[] = [];
+  const nextImages = new Map<string, string>();
   for (const row of result.captures) {
     const snapshot = row.snapshot as unknown as Reference;
     if (row.user_id !== user.id || !snapshot?.element || !snapshot.source || snapshot.snapshotVersion !== 1) {
@@ -61,7 +79,12 @@ export async function readReferences({ client, user }: LibraryConnection): Promi
     let screenshot = snapshot.screenshot;
     if (row.screenshot_path) {
       const extension = row.screenshot_path.endsWith('.png') ? 'png' : 'webp';
-      screenshot = { dataUrl: await client.downloadScreenshot(row.id, extension),
+      const imageKey = JSON.stringify([row.id, row.screenshot_path, row.updated_at]);
+      // Missing revisions must never permit reuse of potentially changed bytes.
+      const dataUrl = (row.updated_at ? cached?.images.get(imageKey) : undefined)
+        ?? await client.downloadScreenshot(row.id, extension);
+      nextImages.set(imageKey, dataUrl);
+      screenshot = { dataUrl,
         storagePath: row.screenshot_path, mimeType: `image/${extension}`,
         width: screenshot?.width ?? 4, height: screenshot?.height ?? 3 };
     } else screenshot = null;
@@ -72,5 +95,6 @@ export async function readReferences({ client, user }: LibraryConnection): Promi
       source: { ...snapshot.source, url: row.source_url, origin: row.source_origin, title: row.page_title },
       note: row.note, favorite: row.favorite, collectionId: row.collection_id, screenshot });
   }
+  cached?.commit(nextImages);
   return { userId: user.id, references: references.sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt)) };
 }

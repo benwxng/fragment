@@ -55,7 +55,8 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   let hasLoadedLibrary = viewState?.account?.authStatus === 'signed-in' && viewState.references !== undefined;
   const parameters = new URLSearchParams(window.location.search);
   search.value = parameters.get('q')?.slice(0, 120) ?? '';
-  let activeFilter: Filter = libraryFilters.some(([value]) => value === parameters.get('facet'))
+  const filters = root.querySelector('.filters');
+  let activeFilter: Filter = filters && libraryFilters.some(([value]) => value === parameters.get('facet'))
     ? parameters.get('facet') as Filter : 'all';
   let selectedReference: Reference | undefined;
   let pendingDeletion: Reference | undefined;
@@ -97,13 +98,19 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   async function sendExtensionMessage(message: ExtensionMessage): Promise<ExtensionResponse> {
     const response = await adapter.request(message);
     if (signal.aborted) throw new Error('Library closed.');
+    if (response.ok && response.redirecting) {
+      clearLibrary();
+      accountDialog.close();
+      root.hidden = true;
+    }
     return response;
   }
 
-  async function cloudRequest(message: ExtensionMessage): Promise<CloudState> {
+  async function cloudRequest(message: ExtensionMessage): Promise<CloudState | undefined> {
     const response = await sendExtensionMessage(message);
     if (!response.ok) throw new Error(response.error);
-    if (!response.cloudState) throw new Error('The extension did not return cloud status.');
+    if (response.redirecting) return;
+    if (!response.cloudState) throw new Error('Unable to check your account right now. Please try again.');
     cloudState = response.cloudState;
     renderCloudState();
     return response.cloudState;
@@ -138,7 +145,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
 
     if (state.authStatus !== 'signed-in') {
       accountButtonLabel.textContent = 'Sign in';
-      accountCopy.textContent = 'Sign in to save references and see the same library on the web and in Glance.';
+      accountCopy.textContent = 'Sign in to keep your references in one place.';
       signInForm.hidden = false;
       return;
     }
@@ -757,8 +764,8 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     } finally { undoDelete.disabled = false; }
   }
 
-  const filters = root.querySelector('.filters')!;
-  for (const [value, label] of libraryFilters) {
+  // Restore the commented filter markup to enable these controls again.
+  if (filters) for (const [value, label] of libraryFilters) {
     const button = document.createElement('button');
     button.className = `filter${value === activeFilter ? ' is-active' : ''}`;
     button.type = 'button';
@@ -865,7 +872,8 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     signInButton.disabled = true;
     accountFeedback.textContent = 'Complete sign-in in the browser window…';
     try {
-      await cloudRequest({ type: 'cloud-sign-in' });
+      const state = await cloudRequest({ type: 'cloud-sign-in' });
+      if (!state) return;
       await refreshLibrary();
       accountFeedback.textContent = 'Signed in.';
     } catch (error) {
@@ -927,6 +935,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
         resetOnError = Boolean(stateResponse.resetLibrary);
         throw new Error(stateResponse.error);
       }
+      if (stateResponse.redirecting) return;
       const next = stateResponse.cloudState!;
       if (cloudState?.userId !== next.userId) {
         forgetView();
@@ -943,6 +952,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
         resetOnError = Boolean(response.resetLibrary);
         throw new Error(response.error);
       }
+      if (response.redirecting) return;
       if (response.userId !== next.userId) {
         resetOnError = true;
         throw new Error('Your account changed. Refresh the library.');

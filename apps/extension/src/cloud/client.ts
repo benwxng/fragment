@@ -53,7 +53,13 @@ export function getCloudClient(sessionToken?: string) {
         const redirectUri = browser.identity.getRedirectURL();
         const url = new URL('/extension/connect',config.siteUrl);
         url.search = new URLSearchParams({ redirect_uri:redirectUri, challenge, state }).toString();
-        const result = await browser.identity.launchWebAuthFlow({ url:url.href, interactive:true });
+        const result = await browser.identity.launchWebAuthFlow({ url:url.href, interactive:true }).catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          if (/cancel|closed|user did not approve/i.test(message)) {
+            throw new Error('Sign-in was cancelled. Sign in to save references.', { cause: error });
+          }
+          throw new Error('Unable to open Glance sign-in. Check your connection and try again.', { cause: error });
+        });
         if (!result) throw new Error('Sign-in was cancelled.');
         const callback = new URL(result);
         const expected = new URL(redirectUri);

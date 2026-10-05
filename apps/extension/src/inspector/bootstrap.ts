@@ -4,7 +4,6 @@ import type { ExtensionMessage, ExtensionResponse } from '../messages';
 import { captureElementImage, type ScreenshotCrop, waitForOverlayToDisappear } from './screenshot';
 import { inspectorStyles } from './styles';
 import { createSaveFeedback } from './save-feedback';
-import { createToolbarEye } from './toolbar-eye';
 
 const HOST_ID = '__refer_design_inspector__';
 const TOGGLE_EVENT = 'refer:toggle-inspector';
@@ -20,7 +19,6 @@ interface HudElements {
   highlightFill: HTMLDivElement;
   highlightEdges: HTMLDivElement[];
   chip: HTMLDivElement;
-  eye: ReturnType<typeof createToolbarEye>;
   hud: HTMLElement;
   fontPreview: HTMLDivElement;
   sections: HTMLDivElement;
@@ -97,14 +95,15 @@ function createUi(shadow: ShadowRoot): HudElements {
   highlight.append(highlightFill, ...highlightEdges);
 
   const chip = element('div', 'chip');
-  const eye = createToolbarEye();
+  const statusDot = element('span', 'status-dot');
+  statusDot.setAttribute('aria-hidden', 'true');
   const chipLabel = element('span', 'chip-label');
   chipLabel.textContent = 'Click to inspect';
   const libraryButton = createButton('library', 'View references');
   const exitButton = createButton('exit', 'Exit');
   exitButton.setAttribute('aria-label', 'Exit inspector');
   exitButton.setAttribute('aria-keyshortcuts', 'Escape');
-  chip.append(eye.element, chipLabel, libraryButton, exitButton);
+  chip.append(statusDot, chipLabel, libraryButton, exitButton);
 
   const hud = element('section', 'hud');
   hud.hidden = true;
@@ -161,7 +160,6 @@ function createUi(shadow: ShadowRoot): HudElements {
     highlightFill,
     highlightEdges,
     chip,
-    eye,
     hud,
     fontPreview,
     sections,
@@ -226,6 +224,14 @@ function px(value: string, precision = 1): string {
   return `${Number(numeric.toFixed(precision))} px`;
 }
 
+function trackingPercent(letterSpacing: string, fontSize: string): string {
+  if (letterSpacing === 'normal') return 'Normal';
+  const tracking = Number.parseFloat(letterSpacing);
+  const size = Number.parseFloat(fontSize);
+  if (!Number.isFinite(tracking) || !Number.isFinite(size) || size <= 0) return px(letterSpacing);
+  return `${Number((tracking / size * 100).toFixed(1))}%`;
+}
+
 function spacing(values: readonly string[]): string {
   const normalized = values.map(px);
   const [top, right, bottom, left] = normalized;
@@ -271,6 +277,72 @@ function createSection(title: string, rows: readonly HudRow[]): HTMLElement {
   return section;
 }
 
+function createBoxSection(target: Element, computed: CSSStyleDeclaration): HTMLElement {
+  const section = createSection('Box', [
+    { label: 'Radius', value: spacing(computed.borderRadius.split(/\s+/)) },
+    { label: 'Border style', value: computed.borderStyle || 'none' },
+  ]);
+  section.classList.add('box-section');
+  const diagram = element('div', 'box-diagram');
+  diagram.setAttribute('role', 'img');
+  const description: string[] = [];
+  let parent: HTMLElement = diagram;
+  const sides = ['top', 'right', 'bottom', 'left'] as const;
+  const number = (value: string) => {
+    const numeric = Number.parseFloat(value);
+    return value.endsWith('px') && Number.isFinite(numeric)
+      ? String(Number(numeric.toFixed(1))) : value;
+  };
+  for (const name of ['margin', 'border', 'padding'] as const) {
+    if (name === 'border' && sides.every(side => parseFloat(computed.getPropertyValue(`border-${side}-width`)) === 0)) {
+      description.push('Border: 0 pixels on all sides');
+      continue;
+    }
+    const layer = element('div', `box-layer box-${name}`);
+    const label = element('span', 'box-label');
+    label.textContent = name;
+    layer.append(label);
+    for (const side of sides) {
+      const property = name === 'border' ? `border-${side}-width` : `${name}-${side}`;
+      const value = computed.getPropertyValue(property);
+      const cell = element('span', `box-side box-${side}`);
+      cell.textContent = number(value);
+      cell.title = `${name} ${side}: ${value}`;
+      layer.append(cell);
+      description.push(cell.title);
+    }
+    const inner = element('div', 'box-inner');
+    layer.append(inner);
+    parent.append(layer);
+    parent = inner;
+  }
+  const dimension = (axis: 'width' | 'height') => {
+    const pair = axis === 'width' ? ['left', 'right'] : ['top', 'bottom'];
+    const padding = pair.reduce((sum, side) => sum + (parseFloat(computed.getPropertyValue(`padding-${side}`)) || 0), 0);
+    const border = pair.reduce((sum, side) => sum + (parseFloat(computed.getPropertyValue(`border-${side}-width`)) || 0), 0);
+    const used = parseFloat(computed[axis]);
+    // Computed dimensions exclude transforms; subtract edges only for border-box sizing.
+    const fallback = target instanceof HTMLElement
+      ? (axis === 'width' ? target.offsetWidth : target.offsetHeight)
+      : target.getBoundingClientRect()[axis];
+    const size = Number.isFinite(used)
+      ? used - (computed.boxSizing === 'border-box' ? padding + border : 0)
+      : fallback - padding - border;
+    return Number(Math.max(0, size).toFixed(1));
+  };
+  const content = element('div', 'box-content');
+  const label = element('span');
+  label.textContent = 'content';
+  const size = element('span', 'box-dimensions');
+  size.textContent = `${dimension('width')} × ${dimension('height')}`;
+  content.append(label, size);
+  parent.append(content);
+  diagram.setAttribute('aria-label', `Box model in pixels. ${description.join('. ')}. Content: ${size.textContent} pixels.`);
+  diagram.title = 'All measurements in pixels';
+  section.insertBefore(diagram, section.querySelector('.values'));
+  return section;
+}
+
 function renderProperties(ui: HudElements, target: Element): void {
   const computed = getComputedStyle(target);
   const foreground = computed.color;
@@ -281,40 +353,13 @@ function renderProperties(ui: HudElements, target: Element): void {
       { label: primaryFont(computed.fontFamily), value: px(computed.fontSize, 0) },
       { label: 'Line height', value: px(computed.lineHeight) },
       { label: 'Weight', value: computed.fontWeight },
-      { label: 'Tracking', value: px(computed.letterSpacing) },
+      { label: 'Tracking', value: trackingPercent(computed.letterSpacing, computed.fontSize) },
     ]),
     createSection('Color', [
       { label: 'Text', value: compactColor(foreground), swatch: foreground },
       { label: 'Background', value: compactColor(background), swatch: background },
     ]),
-    createSection('Box', [
-      {
-        label: 'Padding',
-        value: spacing([
-          computed.paddingTop,
-          computed.paddingRight,
-          computed.paddingBottom,
-          computed.paddingLeft,
-        ]),
-      },
-      {
-        label: 'Margin',
-        value: spacing([
-          computed.marginTop,
-          computed.marginRight,
-          computed.marginBottom,
-          computed.marginLeft,
-        ]),
-      },
-      { label: 'Radius', value: spacing(computed.borderRadius.split(/\s+/)) },
-      {
-        label: 'Border',
-        value:
-          computed.borderTopStyle === 'none'
-            ? 'none'
-            : `${px(computed.borderTopWidth)} ${computed.borderTopStyle}`,
-      },
-    ]),
+    createBoxSection(target, computed),
     createSection('Layout', [
       { label: 'Display', value: computed.display },
       { label: 'Position', value: computed.position },
@@ -572,6 +617,7 @@ export function bootstrapInspector(): void {
   async function saveTarget(elementToSave: Element): Promise<void> {
     if (!active || saving || !elementToSave.isConnected) return;
     saving = true;
+    hideToast();
     saveFeedback.clear();
     retryTarget = elementToSave;
     ui.chipLabel.textContent = 'Saving…';
@@ -632,7 +678,6 @@ export function bootstrapInspector(): void {
     active = false;
     panelAnimation?.cancel();
     saveFeedback.dispose();
-    ui.eye.dispose();
     if (frame) cancelAnimationFrame(frame);
     if (geometryFrame) cancelAnimationFrame(geometryFrame);
     for (const dispose of cleanups.splice(0)) dispose();
@@ -649,9 +694,7 @@ export function bootstrapInspector(): void {
   }
 
   const handlePointerMove: EventListener = (event) => {
-    if (!(event instanceof PointerEvent)) return;
-    ui.eye.track(event.clientX, event.clientY);
-    if (isOverlayEvent(event)) return;
+    if (!(event instanceof PointerEvent) || isOverlayEvent(event)) return;
     pendingPoint = { x: event.clientX, y: event.clientY };
     if (!frame) frame = requestAnimationFrame(selectAtPointer);
   };
@@ -667,7 +710,6 @@ export function bootstrapInspector(): void {
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.button !== 0 || saving) return;
-    ui.eye.click();
     if (expanded) {
       if (target?.isConnected) void saveTarget(target);
       else setTarget(null);
