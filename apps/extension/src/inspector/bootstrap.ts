@@ -502,8 +502,10 @@ export function bootstrapInspector(): void {
     return event.composedPath().includes(host);
   }
 
-  function setOverlayVisibility(visible: boolean): void {
+  function setOverlayVisibility(visible: boolean, keepToolbar = false): void {
     host.style.setProperty('visibility', visible ? 'visible' : 'hidden', 'important');
+    // A non-overlapping toolbar cannot appear in the cropped reference.
+    ui.chip.style.visibility = !visible && keepToolbar ? 'visible' : '';
   }
 
   function setExpanded(next: boolean, animate = false): void {
@@ -580,9 +582,19 @@ export function bootstrapInspector(): void {
       const reference = inspectElement(elementToSave);
       const rect = elementToSave.getBoundingClientRect();
       restoreEditableContent = concealEditableContent(document.documentElement);
-      setOverlayVisibility(false);
+      const toolbarRect = ui.chip.getBoundingClientRect();
+      // Include the toolbar shadow so it cannot bleed into a nearby capture.
+      const margin = 48;
+      const overlapsToolbar = rect.left < toolbarRect.right + margin
+        && rect.right > toolbarRect.left - margin
+        && rect.top < toolbarRect.bottom + margin
+        && rect.bottom > toolbarRect.top - margin;
+      setOverlayVisibility(false, !overlapsToolbar);
       await waitForOverlayToDisappear();
-      const crop = await captureElementImage(rect);
+      const crop = await captureElementImage(rect, () => {
+        restoreEditableContent();
+        if (active) setOverlayVisibility(true);
+      });
       const capturedReference = attachScreenshot(
         { ...reference, facets: inferFacets(reference.element) },
         crop,

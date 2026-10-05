@@ -138,8 +138,17 @@ async function requestVisibleTabImage(): Promise<string> {
   return response.imageDataUrl;
 }
 
-export async function captureElementImage(rect: DOMRectReadOnly): Promise<ScreenshotCrop> {
-  const sourceDataUrl = await requestVisibleTabImage();
+export async function captureElementImage(
+  rect: DOMRectReadOnly,
+  onCaptured: () => void = () => {},
+): Promise<ScreenshotCrop> {
+  let sourceDataUrl: string;
+  try {
+    sourceDataUrl = await requestVisibleTabImage();
+  } finally {
+    // The browser has finished reading page pixels. Restore UI before encoding/upload.
+    onCaptured();
+  }
   const image = await loadImage(sourceDataUrl);
 
   const geometry = calculateScreenshotCrop(

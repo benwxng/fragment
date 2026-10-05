@@ -41,6 +41,8 @@ Privacy policy URL, publisher contact, support URL, distribution regions, and fi
 
 ## Version history
 
+The inspector toolbar stays visible during saving unless it overlaps the screenshot crop. Capture UI is restored immediately after the browser screenshot, before image encoding and upload (2026-10-04, draft).
+
 The enlarged inspector toolbar uses the Glance eye logo. Its pupil follows the pointer; clicking a page element triggers a blink and a 90-degree asterisk turn. Decorative motion respects reduced-motion preferences (2026-10-04, draft).
 
 The inspector toolbar fades and slides down into place on activation with the same easing as the panel; reduced-motion activation remains instant (2026-10-04, draft).
