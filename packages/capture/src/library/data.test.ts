@@ -65,3 +65,54 @@ it('prunes deleted references and does not reuse an image without a revision', a
   await readReferences(f.connection, cache);
   expect(f.downloadScreenshot).toHaveBeenCalledTimes(4);
 });
+
+it('downloads four images concurrently and preserves order when requests finish out of order', async () => {
+  const f = fixture();
+  const rows = Array.from({ length: 6 }, (_, index) => ({ ...f.row, id: `capture-${index}`, screenshot_path: `owner-a/${index}.png` }));
+  f.listLibrary.mockResolvedValue({ captures: rows, complete: true, userId: 'owner-a' });
+  const pending = new Map<string, (value: string) => void>();
+  f.downloadScreenshot.mockImplementation((id: string) => new Promise<string>(resolve => pending.set(id, resolve)));
+  const result = readReferences(f.connection);
+  await vi.waitFor(() => expect(f.downloadScreenshot).toHaveBeenCalledTimes(4));
+  pending.get('capture-3')!('image-3');
+  await vi.waitFor(() => expect(f.downloadScreenshot).toHaveBeenCalledTimes(5));
+  pending.get('capture-1')!('image-1');
+  await vi.waitFor(() => expect(f.downloadScreenshot).toHaveBeenCalledTimes(6));
+  for (const index of [5, 4, 2, 0]) pending.get(`capture-${index}`)!(`image-${index}`);
+  const loaded = await result;
+  expect(loaded.references.map(reference => reference.id)).toEqual(rows.map(row => row.id));
+  expect(loaded.references.map(reference => reference.screenshot?.dataUrl)).toEqual(rows.map((_, index) => `image-${index}`));
+});
+
+it('validates every row before requesting any images', async () => {
+  const f = fixture();
+  f.listLibrary.mockResolvedValue({ captures: [f.row, { ...f.row, user_id: 'other' }], complete: true, userId: 'owner-a' });
+  await expect(readReferences(f.connection)).rejects.toThrow('Unable to read a saved reference');
+  expect(f.downloadScreenshot).not.toHaveBeenCalled();
+});
+
+it('does not cache partial results or schedule more downloads after a failure', async () => {
+  const f = fixture(); const cache = new LibraryImageCache();
+  const rows = Array.from({ length: 6 }, (_, index) => ({ ...f.row, id: `capture-${index}` }));
+  f.listLibrary.mockResolvedValue({ captures: rows, complete: true, userId: 'owner-a' });
+  let release!: (value: string) => void;
+  f.downloadScreenshot.mockImplementation((id: string) => id === 'capture-0'
+    ? Promise.reject(new Error('Download failed'))
+    : new Promise<string>(resolve => { const previous = release; release = value => { previous?.(value); resolve(value); }; }));
+  await expect(readReferences(f.connection, cache)).rejects.toThrow('Download failed');
+  expect(f.downloadScreenshot).toHaveBeenCalledTimes(4);
+  release('image');
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(f.downloadScreenshot).toHaveBeenCalledTimes(4);
+  f.downloadScreenshot.mockResolvedValue('image');
+  await readReferences(f.connection, cache);
+  expect(f.downloadScreenshot).toHaveBeenCalledTimes(10);
+});
+
+it('returns complete reference metadata without image IO when the platform can load images on demand', async () => {
+  const f = fixture();
+  const result = await readReferences(f.connection, undefined, { deferImages: true });
+  expect(result.references[0]?.screenshot).toMatchObject({ dataUrl: null, storagePath: f.row.screenshot_path, width: 20, height: 10 });
+  expect(f.downloadScreenshot).not.toHaveBeenCalled();
+});

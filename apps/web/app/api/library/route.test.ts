@@ -123,3 +123,53 @@ describe('shared library web transport', () => {
     expect(new TextDecoder().decode(options.body)).toBe(body);
   });
 });
+
+it('bootstraps account and complete metadata with one token and concurrent upstream reads', async () => {
+  const pending: Array<(response: Response) => void> = [];
+  upstream.mockImplementation(() => new Promise<Response>(resolve => pending.push(resolve)));
+  const loading = GET(new Request('https://glance.test/api/library/bootstrap'), context('bootstrap'));
+  await vi.waitFor(() => expect(upstream).toHaveBeenCalledTimes(2));
+  expect(mocks.token).toHaveBeenCalledOnce();
+  pending[1]!(Response.json({ userId: 'owner', complete: true, captures: [] }));
+  pending[0]!(Response.json({ user: { id: 'owner', email: 'test@example.test' } }));
+  const response = await loading;
+  expect(response.status).toBe(200);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(await response.json()).toMatchObject({ userId: 'owner', complete: true, captures: [], user: { id: 'owner' } });
+});
+it('rejects mismatched owners in a bootstrap result', async () => {
+  upstream.mockResolvedValueOnce(Response.json({ user: { id: 'owner' } }))
+    .mockResolvedValueOnce(Response.json({ userId: 'other', complete: true, captures: [] }));
+  expect((await GET(new Request('https://glance.test/api/library/bootstrap'), context('bootstrap'))).status).toBe(503);
+});
+it('allows private image caching only after authenticating an owner-pinned native image URL', async () => {
+  upstream.mockResolvedValueOnce(Response.json({ user: { id: 'owner' } }))
+    .mockResolvedValueOnce(new Response(new Uint8Array([137,80,78,71]), { headers: { 'Content-Type': 'image/png' } }));
+  const response = await GET(new Request(`https://glance.test/api/library/screenshots/${id}.png?owner=owner`), context(`screenshots/${id}.png`));
+  expect(response.status).toBe(200);
+  expect(response.headers.get('cache-control')).toBe('private, max-age=300');
+  expect(response.headers.get('vary')).toBe('Cookie');
+  expect(mocks.token).toHaveBeenCalledOnce();
+  expect(upstream).toHaveBeenCalledTimes(2);
+});
+it('rejects a native image URL pinned to a different account before reading its image', async () => {
+  upstream.mockResolvedValue(Response.json({ user: { id: 'other' } }));
+  const response = await GET(new Request(`https://glance.test/api/library/screenshots/${id}.png?owner=owner`), context(`screenshots/${id}.png`));
+  expect(response.status).toBe(409);
+  expect(upstream).toHaveBeenCalledOnce();
+});
+it('never caches failed image responses', async () => {
+  upstream.mockResolvedValueOnce(Response.json({ user: { id: 'owner' } }))
+    .mockResolvedValueOnce(new Response(null, { status: 404 }));
+  const response = await GET(new Request(`https://glance.test/api/library/screenshots/${id}.png?owner=owner`), context(`screenshots/${id}.png`));
+  expect(response.status).toBe(404);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+});
+it('rejects conflicting URL and header owners so a cache URL cannot be populated for another account', async () => {
+  const response = await GET(new Request(`https://glance.test/api/library/screenshots/${id}.png?owner=owner`, {
+    headers: { 'x-library-owner': 'other' },
+  }), context(`screenshots/${id}.png`));
+  expect(response.status).toBe(409);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(upstream).not.toHaveBeenCalled();
+});

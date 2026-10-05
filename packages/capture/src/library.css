@@ -3,7 +3,6 @@
 & { all: initial; display: block; }
 :where(:not(svg, svg *)) { all: revert; }
 
-
 & {
   color-scheme: light;
   --bg: #f5f5f5;
@@ -17,7 +16,6 @@
   --accent: #315b48;
   --accent-hover: #254936;
   --accent-soft: #e5ede8;
-  --library-ease: cubic-bezier(0.23, 1, 0.32, 1);
   --danger: #a12f29;
   --danger-hover: #84221e;
   --focus: #075f46;
@@ -140,14 +138,6 @@ svg {
 }
 
 &.is-detail .brand-asterisk { transform: rotate(90deg); }
-
-@media (prefers-reduced-motion: no-preference) {
-  /* Retarget from the current angle when navigation reverses mid-spin. */
-  &[data-brand-motion] .brand-asterisk {
-    transition: transform 280ms var(--library-ease);
-  }
-}
-
 
 .header-actions,
 .account-button {
@@ -738,18 +728,6 @@ dialog::backdrop {
 
 @media (prefers-reduced-motion: no-preference) {
 
-  .filter,
-  .button,
-  .text-button,
-  .icon-button,
-  .account-button,
-  .toast-action,
-  .toast-close {
-    transition: color 120ms ease-out, background-color 120ms ease-out, opacity 120ms ease-out, transform 120ms ease-out;
-  }
-
-
-
   .filter:active,
   .button:active,
   .text-button:active,
@@ -848,22 +826,43 @@ dialog::backdrop {
 /* Avatar trigger and non-modal account dropdown. */
 .library-header .account-button { width: 40px; height: 40px; min-height: 40px; padding: 0; flex: 0 0 40px; border: 1px solid #315b4826; border-radius: 50%; overflow: hidden; background: #fff; box-shadow: none; }
 .account-avatar { display: block; width: 100%; height: 100%; object-fit: cover; }
-.account-dialog { position: fixed; inset: auto; width: min(280px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px #182a1e14; overflow-y: auto; }
-.account-dialog .account-shell { padding: 1rem; }
+.account-dialog { position: fixed; inset: auto; width: min(240px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px #182a1e14; overflow-y: auto; }
+.account-dialog .account-shell { padding: .375rem; }
 .account-dialog .account-copy { margin: 0; font-size: .875rem; line-height: 1.45; }
 .account-dialog .sign-in-form { margin-top: .75rem; gap: 0; }
 .account-dialog .sign-in-form .button { justify-self: stretch; width: 100%; min-height: 38px; padding: .5rem .75rem; border-radius: 6px; font-size: .8125rem; }
 .account-dialog .signed-in-panel { margin: 0; padding: 0; border: 0; background: transparent; }
 .account-dialog .account-close { display: none; }
-.account-dialog .signed-in-email { margin: 0 0 1rem; overflow-wrap: anywhere; font-size: .875rem; }
-.account-dialog .dialog-actions { display: grid; gap: .25rem; margin-top: .75rem; }
-.account-dialog .dialog-actions .button { width: 100%; justify-content: flex-start; text-align: left; background: transparent; border: 0; font-size: .8125rem; }
-.account-dialog .dialog-actions .button:hover { background: var(--accent-soft); }
+.account-dialog .dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: .125rem; margin: 0; }
+.account-dialog .dialog-actions .button { width: 100%; min-height: 44px; padding: .75rem; justify-content: flex-start; text-align: left; background: transparent; border: 0; border-radius: 8px; font-size: .875rem; font-weight: 500; box-shadow: none; }
+@media (hover: hover) and (pointer: fine) {
+  .account-dialog .dialog-actions .button:hover { background: #182a1e08; }
+  .account-dialog #sign-out:hover { background: #a33c320a; }
+}
+.account-dialog { transform-origin: top right; outline: none; }
+.account-dialog:not([open]) { pointer-events: none; }
+.account-dialog .sync-detail:not(:empty), .account-dialog .account-feedback:not(:empty) { margin: .5rem .75rem; }
+@supports (transition-behavior: allow-discrete) {
+  .account-dialog {
+    opacity: 0;
+    transform: translateY(-4px) scale(.97);
+    transition: opacity 200ms cubic-bezier(.23, 1, .32, 1), transform 200ms cubic-bezier(.23, 1, .32, 1), display 200ms allow-discrete, overlay 200ms allow-discrete;
+  }
+  .account-dialog[open] { opacity: 1; transform: translateY(0) scale(1); }
+  @starting-style {
+    .account-dialog[open] { opacity: 0; transform: translateY(-4px) scale(.97); }
+  }
+  .account-dialog[data-keyboard="true"] { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .account-dialog { transform: none; transition-duration: 100ms; }
+    .account-dialog[open] { transform: none; }
+    @starting-style { .account-dialog[open] { transform: none; } }
+  }
+}
 .account-dialog #sign-out { color: #a33c32; }
 .account-dialog :is(.sync-detail, .account-feedback):empty { display: none; }
 
 /* Shared web and extension library cards. Keep surface-specific UI outside this file. */
-:is(.library-header, .reference-card) { --library-ease: cubic-bezier(0.23, 1, 0.32, 1); }
 .site-header.library-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 28rem) minmax(0, 1fr); align-items: center; gap: 1.5rem; }
 .library-header > .brand { justify-self: start; }
 .library-header > .search { width: 100%; max-width: 28rem; min-width: 0; margin: 0; justify-self: center; }
@@ -894,6 +893,12 @@ dialog::backdrop {
   .library-header > .search { grid-column: 1 / -1; grid-row: 2; }
   .library-header > :is(.account, .header-actions) { grid-column: 2; grid-row: 1; }
 }
+/* Visible before hydration and while account/image requests are pending. */
+.library-skeleton { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); align-items: start; gap: clamp(1rem, 2vw, 1.75rem); }
+.library-skeleton-card { border-radius: 4px; background: #e7e8e5; }
+.card-media.is-image-loading { background: #e7e8e5; }
+.card-media.is-image-loading img { opacity: 0; }
+.card-image-unavailable { padding: 1.5rem; color: var(--text-secondary); font-size: .8125rem; }
 .reference-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); align-items: start; gap: clamp(1rem, 2vw, 1.75rem); }
 .reference-card { position: relative; min-width: 0; }
 .reference-card, .card-open, .card-media { border-radius: 4px; }
@@ -903,8 +908,7 @@ dialog::backdrop {
 .card-open:focus-visible { outline-offset: 0.375rem; }
 .card-open::after { content: ""; position: absolute; inset: 0; z-index: 2; border: 1px solid #0000001a; border-radius: inherit; pointer-events: none; }
 /* Keep blur beside the fading overlay so its backdrop includes the saved image. */
-.card-open::before {
-  content: "";
+.card-blur {
   position: absolute;
   inset: 0 0 auto;
   height: min(100%, 7rem);
@@ -915,47 +919,47 @@ dialog::backdrop {
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 20%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 20%, transparent 100%);
   opacity: 0;
-  transition: opacity 240ms ease;
+
   pointer-events: none;
 }
 .card-media { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; overflow: hidden; color: var(--specimen-color, var(--text)); background: var(--specimen-bg, var(--surface)); }
 /* Bound portrait captures without cropping; masonry measures the constrained height. */
 .card-media img { display: block; width: 100%; height: auto; max-height: min(24rem, 60vh); object-fit: contain; }
 .card-specimen { display: -webkit-box; max-width: 80%; max-height: 7.5rem; overflow: hidden; font-size: clamp(2rem, 4vw, 3.75rem); letter-spacing: -0.04em; line-height: 1.05; text-align: center; overflow-wrap: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.card-body { position: absolute; inset: 0; border-radius: inherit; z-index: 1; display: grid; align-content: start; gap: 0.5rem; padding: 1rem 4.5rem 1rem 1rem; color: #fff; background: linear-gradient(to bottom, rgb(0 0 0 / 40%) 0%, rgb(0 0 0 / 0%) 75%); opacity: 0; transition: opacity 240ms ease; pointer-events: none; }
+.card-body { position: absolute; inset: 0; border-radius: inherit; z-index: 1; display: grid; align-content: start; gap: 0.5rem; padding: 1rem 4.5rem 1rem 1rem; color: #fff; background: linear-gradient(to bottom, rgb(0 0 0 / 40%) 0%, rgb(0 0 0 / 0%) 75%); opacity: 0; pointer-events: none; }
 .card-title { display: -webkit-box; overflow: hidden; font-size: 0.9375rem; font-weight: 650; letter-spacing: -0.01em; line-height: 1.35; overflow-wrap: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 
-.card-source { position: absolute; right: 1rem; top: 1rem; z-index: 2; display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid #fff; border-radius: 4px; color: #000; background: #fff; opacity: 0; pointer-events: none; transition: opacity 240ms ease, background-color 160ms ease, transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+.card-source { position: absolute; right: 1rem; top: 1rem; z-index: 2; display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid #fff; border-radius: 4px; color: #000; background: #fff; opacity: 0; pointer-events: none; }
 .card-source svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.reference-card:focus-within .card-open::before,
-.reference-card:focus-within :is(.card-body, .card-source) { opacity: 1; transition: none; }
+.reference-card:focus-within .card-blur,
+.reference-card:focus-within :is(.card-body, .card-source) { opacity: 1; }
 .reference-card:focus-within .card-source { pointer-events: auto; }
 @media (hover: hover) and (pointer: fine) {
-  .reference-card:hover .card-open::before,
+  .reference-card:hover .card-blur,
   .reference-card:hover :is(.card-body, .card-source) { opacity: 1; }
   .reference-card:hover .card-source { pointer-events: auto; }
   .card-source:hover { background-color: #f0f2ef; }
 }
 @media (hover: none), (pointer: coarse) {
-  .card-open::before, .card-body, .card-source { opacity: 1; }
+  .card-blur, .card-body, .card-source { opacity: 1; }
   .card-source { pointer-events: auto; }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .card-source:hover { transform: translateY(-1px); }
-  .card-body > * { transform: translateY(-0.125rem); transition: transform 240ms var(--library-ease); }
+  .card-body > * { transform: translateY(-0.125rem); }
   .reference-card:is(:hover, :focus-within) .card-body > * { transform: translateY(0); }
-  .reference-card:focus-within .card-body > * { transition: none; }
+
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .library-header > :not(.search), .library-header ~ .library-main { transition-duration: 120ms; }
+  .library-header > :not(.search), .library-header ~ .library-main,
   .library-header:has(> .search:focus-within) > :not(.search), .library-header:has(> .search:focus-within) ~ .library-main { transition-duration: 120ms; }
-  .card-open::before, .card-body, .card-source { transition-duration: 120ms; }
 }
 @media (forced-colors: active) {
   .library-header > .search::before, .library-header > .search::after { border-color: CanvasText; }
   .library-header > .search input[type="search"]:focus-visible { outline-color: Highlight; }
   .library-header:has(> .search:focus-within) > :not(.search), .library-header:has(> .search:focus-within) ~ .library-main { opacity: 1; }
-  .card-open::before { display: none; }
+  .card-blur { display: none; }
   .card-body { color: CanvasText; background: Canvas; }
 }
 
@@ -975,7 +979,7 @@ dialog::backdrop {
 #detail-content::before { content: ''; position: absolute; inset-block: -6rem -2rem; inset-inline-start: calc((100% - var(--detail-gap)) * 1.89 / 2.89 + var(--detail-gap) / 2); width: 1px; background: var(--detail-rule); pointer-events: none; }
 .detail-image-column { position: sticky; top: 2rem; min-width: 0; align-self: start; }
 .detail-hero { height: auto; min-height: 0; max-height: none; padding: 0; border-radius: 8px; background: transparent; box-shadow: none; }
-.detail-hero img { display: block; width: 100%; height: auto; max-height: none; }
+.detail-hero img { display: block; width: auto; height: auto; max-width: 100%; max-height: max(10rem, calc(100svh - 12rem)); object-fit: contain; border-radius: inherit; }
 .detail-specimen { font-size: clamp(2rem, 4vw, 4.5rem); max-width: 100%; padding: 0; max-height: 100%; overflow: auto; line-height: 1.12; }
 .detail-info { display: grid; gap: 1.75rem; min-width: 0; }
 /* Compact provenance and keyboard-accessible detail tabs. */
@@ -1006,8 +1010,7 @@ dialog::backdrop {
 .detail-info .property-section h3, .detail-info .reference-note span { font-size: .6875rem; color: var(--text-secondary); }
 .detail-more summary { min-height: 28px; cursor: pointer; font-size: .875rem; font-weight: 550; }
 .detail-more .property-section { margin-top: 1.75rem; }
-.detail-more[open] > .property-section { animation: detail-reveal 180ms var(--library-ease); }
-.detail-more:has(summary:focus-visible) > .property-section { animation: none; }
+
 .detail-footer { margin: 0; padding: 1rem 0 0; border-top: 1px solid var(--border); justify-content: space-between; font-size: .75rem; color: var(--text-secondary); }
 .detail-footer .button-delete { padding-inline: 0; background: transparent; font-size: .75rem; font-weight: 400; }
 .detail-footer .button-delete { width: auto; }
@@ -1023,8 +1026,7 @@ dialog::backdrop {
   .detail-header h1 { font-size: 1.75rem; }
   .detail-footer { flex-direction: row; }
 }
-@media (prefers-reduced-motion: reduce) { .detail-more[open] > .property-section { animation: none; } }
+
 [hidden] { display: none !important; }
 button:disabled { cursor: not-allowed; opacity: .58; }
 }
-@keyframes detail-reveal { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }

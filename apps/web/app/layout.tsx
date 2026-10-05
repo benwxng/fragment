@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { InterfaceMotion } from '@/components/interface-motion';
 
 import './globals.css';
 
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
+        <InterfaceMotion />
         <a className="skip-link" href="#main-content">Skip to content</a>
         {children}
       </body>

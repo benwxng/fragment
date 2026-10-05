@@ -25,6 +25,8 @@ export interface LibraryAdapter {
   homeUrl: string;
   initialReferenceId?: string;
   viewState?: LibraryViewState;
+  /** Trusted platform URL for an authenticated screenshot; stored capture URLs are never used. */
+  imageUrl?(reference: Reference): string | undefined;
   request(message: LibraryRequest): Promise<LibraryResponse>;
   subscribe?(refresh: (accountChanged: boolean) => void): () => void;
 }

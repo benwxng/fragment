@@ -63,7 +63,8 @@ export class LibraryImageCache {
   }
 }
 
-export async function readReferences({ client, user }: LibraryConnection, cache?: LibraryImageCache): Promise<{ references: Reference[]; userId: string }> {
+export async function readReferences({ client, user }: LibraryConnection, cache?: LibraryImageCache,
+  options: { deferImages?: boolean } = {}): Promise<{ references: Reference[]; userId: string }> {
   const cached = cache?.forAccount(user.id);
   const result = await client.listLibrary();
   if (!result.complete || result.userId !== user.id || !Array.isArray(result.captures)) {
@@ -71,30 +72,45 @@ export async function readReferences({ client, user }: LibraryConnection, cache?
   }
   const references: Reference[] = [];
   const nextImages = new Map<string, string>();
+  // Validate the whole listing before starting any image requests.
   for (const row of result.captures) {
     const snapshot = row.snapshot as unknown as Reference;
     if (row.user_id !== user.id || !snapshot?.element || !snapshot.source || snapshot.snapshotVersion !== 1) {
       throw new Error('Unable to read a saved reference.');
     }
+  }
+  let nextIndex = 0;
+  let failed = false;
+  async function readNext(): Promise<void> {
+    while (!failed && nextIndex < result.captures.length) {
+      const index = nextIndex++;
+      try { references[index] = await readRow(result.captures[index]!); }
+      catch (error) { failed = true; throw error; }
+    }
+  }
+  async function readRow(row: CaptureRow): Promise<Reference> {
+    const snapshot = row.snapshot as unknown as Reference;
     let screenshot = snapshot.screenshot;
     if (row.screenshot_path) {
       const extension = row.screenshot_path.endsWith('.png') ? 'png' : 'webp';
       const imageKey = JSON.stringify([row.id, row.screenshot_path, row.updated_at]);
       // Missing revisions must never permit reuse of potentially changed bytes.
-      const dataUrl = (row.updated_at ? cached?.images.get(imageKey) : undefined)
-        ?? await client.downloadScreenshot(row.id, extension);
-      nextImages.set(imageKey, dataUrl);
+      const dataUrl = options.deferImages ? null : ((row.updated_at ? cached?.images.get(imageKey) : undefined)
+        ?? await client.downloadScreenshot(row.id, extension));
+      if (dataUrl) nextImages.set(imageKey, dataUrl);
       screenshot = { dataUrl,
         storagePath: row.screenshot_path, mimeType: `image/${extension}`,
         width: screenshot?.width ?? 4, height: screenshot?.height ?? 3 };
     } else screenshot = null;
     const facets = row.facets.filter((facet): facet is CaptureFacet => ['typography', 'component', 'color', 'layout'].includes(facet));
-    references.push({ ...snapshot, id: row.id, capturedAt: row.captured_at, facets,
+    return { ...snapshot, id: row.id, capturedAt: row.captured_at, facets,
       element: { ...snapshot.element, semantic: { ...snapshot.element.semantic,
         accessibleName: row.element_label || snapshot.element.semantic.accessibleName } },
       source: { ...snapshot.source, url: row.source_url, origin: row.source_origin, title: row.page_title },
-      note: row.note, favorite: row.favorite, collectionId: row.collection_id, screenshot });
+      note: row.note, favorite: row.favorite, collectionId: row.collection_id, screenshot };
   }
+  // Bound concurrency so a large library does not flood the API with requests.
+  await Promise.all(Array.from({ length: Math.min(4, result.captures.length) }, readNext));
   cached?.commit(nextImages);
   return { userId: user.id, references: references.sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt)) };
 }

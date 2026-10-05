@@ -4,6 +4,7 @@ import type { ExtensionMessage, ExtensionResponse } from '../messages';
 import { captureElementImage, type ScreenshotCrop, waitForOverlayToDisappear } from './screenshot';
 import { inspectorStyles } from './styles';
 import { createSaveFeedback } from './save-feedback';
+import { createMotionScope, motionEase, mountButtonMotion, type MotionScope } from '@refer/capture/motion';
 
 const HOST_ID = '__refer_design_inspector__';
 const TOGGLE_EVENT = 'refer:toggle-inspector';
@@ -14,6 +15,7 @@ const VIEWPORT_INSET = 8;
 type ToastKind = 'saved' | 'error';
 
 interface HudElements {
+  motion: MotionScope;
   root: HTMLDivElement;
   highlight: HTMLDivElement;
   highlightFill: HTMLDivElement;
@@ -155,6 +157,7 @@ function createUi(shadow: ShadowRoot): HudElements {
   shadow.append(style, root);
 
   return {
+    motion: createMotionScope(),
     root,
     highlight,
     highlightFill,
@@ -430,21 +433,22 @@ function positionOverlay(
   if (smoothOutline !== undefined) ui.highlight.dataset.smooth = String(smoothOutline);
   const width = Math.max(0, visibleRight - visibleLeft);
   const height = Math.max(0, visibleBottom - visibleTop);
+  const smooth = ui.highlight.dataset.smooth === 'true';
+  ui.motion.move(ui.highlight, `translate3d(${visibleLeft}px, ${visibleTop}px, 0)`, smooth);
   Object.assign(ui.highlight.style, {
-    transform: `translate3d(${visibleLeft}px, ${visibleTop}px, 0)`,
     width: `${width}px`,
     height: `${height}px`,
   });
   // Animate independent 1px edges so resizing never stretches the stroke thickness.
-  ui.highlightFill.style.transform = `scale(${width}, ${height})`;
+  ui.motion.move(ui.highlightFill, `scale(${width}, ${height})`, smooth);
   const edges = [
     `scaleX(${width})`,
     `translateY(${Math.max(0, height - 1)}px) scaleX(${width})`,
     `scaleY(${height})`,
     `translateX(${Math.max(0, width - 1)}px) scaleY(${height})`,
   ];
-  ui.highlightEdges.forEach((edge, index) => { edge.style.transform = edges[index]!; });
-  ui.hud.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+  ui.highlightEdges.forEach((edge, index) => ui.motion.move(edge, edges[index]!, smooth));
+  ui.motion.move(ui.hud, `translate3d(${left}px, ${top}px, 0)`, smoothOutline !== false);
 }
 
 function parentElement(target: Element): Element | null {
@@ -515,11 +519,14 @@ export function bootstrapInspector(): void {
   const shadow = host.attachShadow({ mode: 'open' });
   const ui = createUi(shadow);
   document.documentElement.append(host);
+  const buttonMotion = mountButtonMotion(ui.root, ui.motion, 'button');
+  ui.motion.play(ui.chip, { opacity: [0, 1], transform: ['translate(-50%, -12px)', 'translate(-50%, 0px)'] },
+    { duration: 0.28, ease: motionEase.reveal });
 
   let active = true;
   let saving = false;
   let expanded = false;
-  let panelAnimation: Animation | undefined;
+  let panelAnimation: ReturnType<MotionScope['play']>;
   let target: Element | null = null;
   let frame = 0;
   let geometryFrame = 0;
@@ -570,10 +577,9 @@ export function bootstrapInspector(): void {
       const after = ui.hud.getBoundingClientRect();
       // Reveal the panel from the compact label without scaling its text or page content.
       // Match the library search expansion curve, with a shorter inspector duration.
-      panelAnimation = ui.hud.animate([
-        { clipPath: `inset(0 ${Math.max(0, after.width - before.width)}px ${Math.max(0, after.height - before.height)}px 0 round 4px)` },
-        { clipPath: 'inset(0 0 0 0 round 4px)' },
-      ], { duration: 280, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+      panelAnimation = ui.motion.play(ui.hud, {
+        clipPath: [`inset(0 ${Math.max(0, after.width - before.width)}px ${Math.max(0, after.height - before.height)}px 0 round 4px)`, 'inset(0 0 0 0 round 4px)'],
+      }, { duration: 0.28, ease: motionEase.reveal });
     }
   }
 
@@ -599,11 +605,14 @@ export function bootstrapInspector(): void {
   }
 
   function hideToast(): void {
+    toastAnimation?.cancel();
     ui.toast.hidden = true;
     ui.toast.dataset.kind = '';
   }
 
+  let toastAnimation: ReturnType<MotionScope['play']>;
   function showToast(kind: ToastKind, message: string): void {
+    toastAnimation?.cancel();
     ui.toast.dataset.kind = kind;
     ui.toastMark.textContent = kind === 'saved' ? '✓' : '×';
     ui.toastMessage.textContent = message;
@@ -611,6 +620,8 @@ export function bootstrapInspector(): void {
     ui.viewButton.hidden = kind !== 'saved';
     ui.retryButton.hidden = kind !== 'error';
     ui.toast.hidden = false;
+    toastAnimation = ui.motion.play(ui.toast, { opacity: [0, 1], transform: ['translate(-50%, -12px)', 'translate(-50%, 0px)'] },
+      { duration: 0.24, ease: motionEase.reveal });
     announce(ui.announcer, message);
   }
 
@@ -677,6 +688,8 @@ export function bootstrapInspector(): void {
     if (!active) return;
     active = false;
     panelAnimation?.cancel();
+    buttonMotion.dispose();
+    ui.motion.dispose();
     saveFeedback.dispose();
     if (frame) cancelAnimationFrame(frame);
     if (geometryFrame) cancelAnimationFrame(geometryFrame);

@@ -41,6 +41,18 @@ Privacy policy URL, publisher contact, support URL, distribution regions, and fi
 
 ## Version history
 
+Web library loading now fetches authenticated metadata in one request, loads screenshots near the viewport, and privately caches immutable images per account for repeat visits. The shared renderer preserves progressive image reveals and delete/undo keeps screenshot bytes (2026-10-05, draft).
+
+The library loads images in parallel, uses a quicker loading shimmer, and gently reveals the initial gallery when images are ready. Returning to a loaded library remains immediate; reduced-motion preferences are respected (2026-10-05, draft).
+
+Detail preview images fit within the viewport height and available column width while preserving their proportions, so portrait captures stay centered without being enlarged to fill the column (2026-10-05, draft).
+
+Restore the original search expansion, contraction, and background fading in both libraries (2026-10-05, draft).
+
+Show subtle loading placeholders while saved references load, then fade in decoded images; respect reduced-motion preferences (2026-10-05, draft). Refresh loading-state screenshots.
+
+Interface effects share consistent interruption handling and respect reduced-motion preferences across the inspector and both libraries (2026-10-05, draft). Refresh interaction recordings before submission.
+
 Sign-in failures explain how to retry, and retrying a save clears the previous error while the sign-in window opens. The local development build uses the sign-in site on port 3001 (2026-10-05, draft).
 
 Logged-out library users go directly to the web sign-in page. Expired web sessions preserve the requested destination and show sign-in without redirecting back through a stale session (2026-10-05, draft).

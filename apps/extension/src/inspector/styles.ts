@@ -46,7 +46,6 @@ export const inspectorStyles = String.raw`
     inset: 0 auto auto 0;
     z-index: 0;
     pointer-events: none;
-    transition: none;
   }
 
   .highlight-fill,
@@ -56,7 +55,6 @@ export const inspectorStyles = String.raw`
     width: 1px;
     height: 1px;
     transform-origin: top left;
-    transition: none;
   }
 
   .highlight-fill { background: rgba(166, 244, 197, 0.08); }
@@ -372,66 +370,7 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: no-preference) {
-
-    .chip {
-      opacity: 1;
-      transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease;
-    }
-
-    @starting-style {
-      .chip {
-        opacity: 0;
-        transform: translate(-50%, -12px);
-      }
-    }
-
-    .toast {
-      opacity: 1;
-      transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
-    }
-
-    @starting-style {
-      .toast {
-        opacity: 0;
-        transform: translate(-50%, -12px);
-      }
-    }
-
-    /* Each edge retargets from its current position during rapid pointer changes. */
-    .highlight[data-smooth="true"],
-    .highlight[data-smooth="true"] > * {
-      transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
-    }
-
-    /* Retarget from the current visual position as the inspected element changes. */
-    .hud {
-      transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
-    }
-
-    button:active {
-      scale: 0.96;
-    }
-
-    button {
-      transition-property: background-color, color, scale;
-      transition-duration: 120ms;
-      transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .hud {
-      transition: none;
-    }
-
-    *,
-    *::before,
-    *::after {
-      scroll-behavior: auto !important;
-      transition-duration: 0.01ms !important;
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-    }
+    button:active { transform: scale(0.96); }
   }
 
   @media (forced-colors: active) {

@@ -16,6 +16,7 @@
     "@refer/capture": "workspace:*",
     "@refer/database": "workspace:*",
     "@rive-app/canvas": "^2.43.1",
+    "motion": "^14.0.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"

@@ -13,6 +13,49 @@ assert(listed.ok && account.ok);
 const profile = await mkdtemp(join(tmpdir(), 'glance-parity-'));
 const extensionPath = resolve('apps/extension/.output/chrome-mv3');
 
+async function verifyInterfaceMotion(page: Page) {
+  await page.mouse.move(0, 0);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.locator('#search').focus();
+  await page.waitForFunction(() => document.querySelector('#search')!.getAnimations().some(animation => animation instanceof CSSTransition && animation.transitionProperty === 'transform'));
+  const search = await page.locator('#search').evaluate(element => {
+    const animation = element.getAnimations().find(animation => animation instanceof CSSTransition && animation.transitionProperty === 'transform')!;
+    animation.pause(); animation.currentTime = 100;
+    return { from: new DOMMatrix(getComputedStyle(element).transform).m41, native: animation.constructor.name === 'CSSTransition' };
+  });
+  assert(search.native, 'Search must retain its original CSS transition');
+  await page.locator('#search').blur();
+  const reverse = await page.locator('#search').evaluate(element => {
+    const animation = element.getAnimations().find(animation => animation instanceof CSSTransition && animation.transitionProperty === 'transform')!;
+    animation.pause(); animation.currentTime = 0;
+    const start = new DOMMatrix(getComputedStyle(element).transform).m41;
+    animation.finish();
+    return start;
+  });
+  assert(Math.abs(search.from - reverse) < .5, 'Reversing search expansion must not jump');
+  await page.evaluate(async () => { await Promise.all(document.getAnimations().map(animation => animation.finished)); });
+  // Run twice: effects must release inline styles and remain reusable after completion.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const card = page.locator('.reference-card').first();
+    await card.hover();
+    await page.waitForFunction(() => document.querySelector('.card-body')!.getAnimations().length > 0);
+    await card.evaluate(async element => { await Promise.all(element.getAnimations({ subtree: true }).map(animation => animation.finished)); });
+    assert.equal(await card.locator('.card-body').evaluate(el => getComputedStyle(el).opacity), '1');
+    await page.mouse.move(0, 0);
+    await card.evaluate(async element => { await Promise.all(element.getAnimations({ subtree: true }).map(animation => animation.finished)); });
+    assert.equal(await card.locator('.card-body').evaluate(el => getComputedStyle(el).opacity), '0');
+    assert.equal(await card.locator('.card-body').evaluate(el => el.style.opacity), '', 'Finished effects must release inline styles');
+  }
+  await page.locator('.reference-card').first().hover();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForFunction(() => document.querySelector('.glance-library')!.getAnimations({ subtree: true }).length === 0);
+  await page.locator('#search').focus();
+  assert.equal(await page.locator('#search').evaluate(el => el.getAnimations().length), 0);
+  await page.locator('#search').blur();
+  await page.mouse.move(0, 0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+}
+
 async function verifyBrandMotion(page: Page) {
   const motion = await page.evaluate(async () => {
     const star = document.querySelector<SVGPathElement>('.brand-asterisk')!;
@@ -97,6 +140,7 @@ try {
   for (const page of [web, extension]) page.on('pageerror', error => errors.push(error.message));
   // Only the transport is replaced; both pages execute their actual built library UI.
   const installFixture = ({ references: initial, cloudState }: any) => {
+    if (!chrome.runtime) return;
     let references = initial;
     const respond = async (message: any) => {
       const failure = (window as any).__libraryFailure;
@@ -131,6 +175,7 @@ try {
       assert.equal(await page.locator('.reference-card').count(), 3);
       assert.equal(await page.locator('.search circle').evaluate(el => getComputedStyle(el).r), '5.25px');
       await verifyBrandMotion(page);
+      await verifyInterfaceMotion(page);
     }
     const compare = async (state: string) => {
       const images = [];
@@ -276,10 +321,10 @@ try {
   await extension.evaluate(() => { (window as any).__libraryFailure = undefined; window.dispatchEvent(new Event('focus')); });
   await extension.waitForFunction(() => document.querySelector('#detail-feedback')!.textContent === '');
   assert.equal(await extension.locator('#detail-title').innerText(), selectedTitle);
+  await extension.route('**/login?reauth=1', route => route.fulfill({ body: '<h1>Sign in</h1>', contentType: 'text/html' }));
   await extension.evaluate(() => { (window as any).__libraryFailure = 'signed-out'; window.dispatchEvent(new Event('focus')); });
-  await extension.waitForFunction(() => document.querySelectorAll('.reference-card').length === 0);
-  assert.equal(await extension.locator('#detail-page').isVisible(), false);
-  assert.equal(await extension.locator('#empty-title').innerText(), 'Sign in to your library');
+  await extension.waitForURL('**/login?reauth=1');
+  assert.equal(await extension.locator('.reference-card').count(), 0);
   // Mixed aspect ratios exercise the actual shared renderer and resize observer.
   await extension.setViewportSize({ width: 1440, height: 1000 });
   await extension.goto(`chrome-extension://${extensionId}/library.html`);
@@ -309,12 +354,15 @@ try {
   assert(await extension.locator('.card-media img').evaluateAll(images => images.every(image => {
     const img = image as HTMLImageElement;
     const box = img.getBoundingClientRect(), frame = img.parentElement!.getBoundingClientRect();
+    // Portrait previews are already height-bounded; object-fit preserves the
+    // whole capture inside that box rather than making the box itself tall.
     return Math.abs(box.width - frame.width) < 1 && Math.abs(box.height - frame.height) < 1
-      && Math.abs(box.width / box.height - img.naturalWidth / img.naturalHeight) < .01;
+      && box.height <= Math.min(24 * parseFloat(getComputedStyle(document.documentElement).fontSize), innerHeight * .6) + 1
+      && getComputedStyle(img).objectFit === 'contain' && img.naturalWidth > 0 && img.naturalHeight > 0;
   })));
   await extension.screenshot({ path: '/tmp/glance-parity/masonry-mixed.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('Shared library passed: pixel-identical desktop/mobile gallery and detail pages, deep-link reload, Back/Forward, search, hidden filter bar, delete/undo, keyboard focus, and no overflow. Preview data only.');
+  console.log('Shared library passed: pixel-identical desktop/mobile gallery and detail pages, Motion hover cleanup and original search reversal, live reduced-motion changes, deep-link reload, Back/Forward, search, hidden filter bar, delete/undo, keyboard focus, and no overflow. Preview data only.');
 } finally {
   await context.close();
   await rm(profile, { recursive: true, force: true });

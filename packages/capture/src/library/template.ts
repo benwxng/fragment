@@ -1,3 +1,5 @@
+import { libraryLoadingLabel } from '../presentation';
+
 // Static, trusted markup only. User content is assigned through textContent.
 export const libraryTemplate = /* html */ `
 <a class="skip-link" href="#main-content">Skip to references</a>
@@ -39,6 +41,12 @@ export const libraryTemplate = /* html */ `
         -->
 
         <div class="result-summary" id="result-summary" role="status" aria-live="polite"></div>
+        <div id="library-loading" role="status" aria-label="${libraryLoadingLabel}">
+          <span class="visually-hidden">${libraryLoadingLabel}…</span>
+          <div class="library-skeleton" aria-hidden="true">
+            ${[1.35, .95, 1.15, 1.5, 1, 1.4, 1.25, 1.05].map(ratio => `<div class="library-skeleton-card" style="aspect-ratio: ${ratio}"></div>`).join('')}
+          </div>
+        </div>
         <div class="reference-grid" id="reference-grid" aria-busy="true"></div>
 
         <div class="empty-state" id="empty-state" hidden>
@@ -69,7 +77,7 @@ export const libraryTemplate = /* html */ `
       </form>
     </dialog>
 
-    <dialog class="account-dialog" id="account-dialog" aria-labelledby="account-title">
+    <dialog class="account-dialog" id="account-dialog" tabindex="-1" aria-labelledby="account-title">
       <div class="account-shell">
         <button class="icon-button account-close" id="account-close" type="button" aria-label="Close account settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
@@ -82,12 +90,11 @@ export const libraryTemplate = /* html */ `
         </form>
 
         <div class="signed-in-panel" id="signed-in-panel" hidden>
-          <p class="signed-in-email" id="signed-in-email"></p>
           <p class="sync-detail" id="sync-detail"></p>
           <div class="dialog-actions">
             <button class="button button-primary" id="import-legacy" type="button" hidden>Import older saves</button>
-            <button class="button button-secondary" id="sync-now" type="button">Refresh library</button>
-            <button class="button button-secondary" id="sign-out" type="button">Sign out</button>
+            <button class="button button-secondary" id="sync-now" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M4.73828 20.25V16.25H8.73828" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M19.25 3.75V7.75H15.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M20.186 10.9688C20.2281 11.3066 20.2498 11.6508 20.2498 12C20.2498 16.5563 16.5562 20.25 11.9998 20.25C9.32325 20.25 6.88871 18.9754 5.36768 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M3.81383 13.0312C3.7717 12.6934 3.75 12.3492 3.75 12C3.75 7.44365 7.44365 3.75 12 3.75C14.6766 3.75 17.1111 5.02463 18.6322 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Refresh library</span></button>
+            <button class="button button-secondary" id="sign-out" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M20.25 12L9 12M20.25 12L15.75 16.5M20.25 12L15.75 7.5M11.25 20.25H5.75C4.64543 20.25 3.75 19.3546 3.75 18.25L3.75 5.75C3.75 4.64543 4.64543 3.75 5.75 3.75L11.25 3.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Sign out</span></button>
           </div>
         </div>
         <p class="account-feedback" id="account-feedback" role="status" aria-live="polite"></p>

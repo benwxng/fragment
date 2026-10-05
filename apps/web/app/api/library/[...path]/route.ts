@@ -6,7 +6,7 @@ async function forward(request: Request, context: { params: Promise<{ path: stri
   const path = '/' + (await context.params).path.join('/');
   const uuid = '[0-9a-fA-F-]{36}';
   const allowed = request.method === 'GET'
-    ? path === '/me' || path === '/library-sync' || new RegExp('^/screenshots/' + uuid + '\\.(png|webp)$').test(path)
+    ? path === '/bootstrap' || path === '/me' || path === '/library-sync' || new RegExp('^/screenshots/' + uuid + '\\.(png|webp)$').test(path)
     : request.method === 'PUT'
       ? new RegExp('^/(captures/' + uuid + '|screenshots/' + uuid + '\\.(png|webp))$').test(path)
       : request.method === 'DELETE' && new RegExp('^/captures/' + uuid + '$').test(path);
@@ -16,7 +16,36 @@ async function forward(request: Request, context: { params: Promise<{ path: stri
   }
   const headers = { Authorization: `Bearer ${await sessionToken()}` };
   const base = process.env.NEON_FUNCTION_API_BASE_URL!;
-  const owner = request.headers.get('x-library-owner');
+  if (path === '/bootstrap') {
+    // Authenticate once. Both reads use the same server-only token; no per-image
+    // work is needed to return the account and the complete reference metadata.
+    const responses = await Promise.all(['/me', '/library-sync'].map(endpoint => fetch(new URL(endpoint, base), {
+      headers, cache: 'no-store', signal: AbortSignal.timeout(30_000), redirect: 'error',
+    })));
+    if (responses.some(response => response.status === 401)) {
+      await Promise.all(responses.map(response => response.body?.cancel()));
+      await rejectBackendSession();
+    }
+    if (responses.some(response => !response.ok)) {
+      await Promise.all(responses.map(response => response.body?.cancel()));
+      return Response.json({ error: 'Unable to load your library right now.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+    const [{ user }, listing] = await Promise.all(responses.map(response => response.json()));
+    if (!user?.id || listing.userId !== user.id || !listing.complete || !Array.isArray(listing.captures)) {
+      return Response.json({ error: 'Unable to load the complete account library.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+    return Response.json({ ...listing, user }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+  const url = new URL(request.url);
+  const imageRead = request.method === 'GET' && path.startsWith('/screenshots/');
+  // Native <img> requests cannot attach custom headers. Pin these URLs to the
+  // listing's owner and verify that owner just as we do for other library reads.
+  const headerOwner = request.headers.get('x-library-owner');
+  const imageOwner = imageRead ? url.searchParams.get('owner') : null;
+  if (headerOwner && imageOwner && headerOwner !== imageOwner) {
+    return Response.json({ error: 'Conflicting image account.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+  }
+  const owner = headerOwner ?? imageOwner;
   if (path !== '/me') {
     if (!owner) return Response.json({ error: 'An account is required.' }, { status: 400 });
     const me = await fetch(new URL('/me', base), { headers, cache: 'no-store', signal: AbortSignal.timeout(30_000) });
@@ -54,7 +83,12 @@ async function forward(request: Request, context: { params: Promise<{ path: stri
   if (response.status === 401) { await response.body?.cancel(); await rejectBackendSession(); }
   return new Response(response.body, {
     status: response.status,
-    headers: { 'Content-Type': response.headers.get('content-type') ?? 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
+    headers: { 'Content-Type': response.headers.get('content-type') ?? 'application/json',
+      // Screenshot paths are immutable. Owner-pinned URLs can reuse image bytes
+      // in the user's private browser cache, never a shared CDN cache.
+      'Cache-Control': imageRead && response.ok && url.searchParams.has('owner') ? 'private, max-age=300' : 'no-store',
+      ...(imageRead ? { Vary: 'Cookie' } : {}),
+      'X-Content-Type-Options': 'nosniff' },
   });
 }
 async function handle(request: Request, context: { params: Promise<{ path: string[] }> }) {

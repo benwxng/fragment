@@ -7,9 +7,12 @@ import { webLibraryAdapter } from '@/lib/library-adapter';
 import { demoLibraryAdapter } from '@/lib/demo-library-adapter';
 
 const markup = libraryTemplate.replace('href="./index.html"', 'href="/library"');
+// Keep this prop's identity stable: React otherwise rewrites innerHTML on a
+// rerender, detaching the DOM, listeners and animations owned by mountLibrary.
+const initialHTML = { __html: markup };
 
 export function LibraryLoading() {
-  return <div className="glance-library" dangerouslySetInnerHTML={{ __html: markup }} />;
+  return <div className="glance-library" dangerouslySetInnerHTML={initialHTML} />;
 }
 
 export function SharedLibrary({ initialReferenceId, demo = false }: { initialReferenceId?: string; demo?: boolean }) {
@@ -22,5 +25,5 @@ export function SharedLibrary({ initialReferenceId, demo = false }: { initialRef
     adapter.viewState = viewState.current;
     return mountLibrary(root.current, adapter);
   }, [initialReferenceId, demo]);
-  return <div ref={root} className="glance-library" dangerouslySetInnerHTML={{ __html: markup }} />;
+  return <div ref={root} className="glance-library" dangerouslySetInnerHTML={initialHTML} />;
 }

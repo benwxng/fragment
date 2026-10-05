@@ -37,7 +37,7 @@ function AuthFields({ mode, returnTo }: { mode: 'signin' | 'signup'; returnTo: s
   return (
     <form action={formAction} className="auth-form">
       <input type="hidden" name="returnTo" value={returnTo} />
-      <button className="button button-secondary auth-submit" type="button" disabled={googlePending || pending} onClick={googleSignIn}>
+      <button className="button button-secondary auth-submit auth-google" type="button" disabled={googlePending || pending} onClick={googleSignIn}>
         <svg className="google-logo" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path fill="#4285F4" d="M22.56 12.25c0-.73-.06-1.42-.19-2.09H12v3.96h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.57c2.08-1.92 3.27-4.75 3.27-7.95Z" />
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.8l-3.57-2.76c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" />
@@ -47,6 +47,7 @@ function AuthFields({ mode, returnTo }: { mode: 'signin' | 'signup'; returnTo: s
         {googlePending ? 'Connecting to Google…' : 'Continue with Google'}
       </button>
       {googleError ? <p role="alert">{googleError}</p> : null}
+      <hr className="auth-divider" />
       <div className="field">
         <label className="visually-hidden" htmlFor="email">Email</label>
         <input id="email" name="email" type="email" placeholder="Email" autoComplete="email" inputMode="email" required />

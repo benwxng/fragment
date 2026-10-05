@@ -1,10 +1,16 @@
+import { createMotionScope, motionEase } from '@refer/capture/motion';
+
 export function createSaveFeedback(root: HTMLElement) {
   let feedback: HTMLDivElement | null = null;
   let frame = 0;
   let disposed = false;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const motion = createMotionScope();
+  let effects: Array<ReturnType<typeof motion.play>> = [];
 
   function clear() {
+    effects.forEach(effect => effect?.cancel());
+    effects = [];
     cancelAnimationFrame(frame);
     frame = 0;
     feedback?.remove();
@@ -57,17 +63,15 @@ export function createSaveFeedback(root: HTMLElement) {
       const y = top - height / 2;
       badge.style.left = `${Math.max(8, Math.min(x, innerWidth - width - 8))}px`;
       badge.style.top = `${Math.max(8, Math.min(y, innerHeight - height - 8))}px`;
-      const elapsed = now - started;
-      overlay.style.opacity = reducedMotion.matches || elapsed < 1200 ? '1' : String((1400 - elapsed) / 200);
       frame = requestAnimationFrame(place);
     }
     place(started);
     if (!reducedMotion.matches) {
-      badge.animate([
-        { opacity: 0, transform: 'translateY(2px)' },
-        { opacity: 1, transform: 'none' },
-      ], { duration: 140, easing: 'cubic-bezier(0.2, 0, 0, 1)' });
-      path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 180, easing: 'ease-out' });
+      effects.push(
+        motion.play(badge, { opacity: [0, 1], transform: ['translateY(2px)', 'translateY(0)'] }, { duration: 0.14, ease: motionEase.tracking }),
+        motion.play(path, { strokeDashoffset: [1, 0] }, { duration: 0.18, ease: 'easeOut' }),
+        motion.play(overlay, { opacity: [1, 0] }, { duration: 0.2, delay: 1.2, ease: 'linear' }),
+      );
     }
   }
 
@@ -79,6 +83,7 @@ export function createSaveFeedback(root: HTMLElement) {
     dispose() {
       disposed = true;
       clear();
+      motion.dispose();
     },
   };
 }

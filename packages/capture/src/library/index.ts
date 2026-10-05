@@ -1,7 +1,8 @@
-import { conciseElementLabel, formatCaptureDate, libraryFilters, libraryEmptyCopy, type LibraryFilter } from '@refer/capture/presentation';
+import { conciseElementLabel, formatCaptureDate, libraryFilters, libraryEmptyCopy, libraryImageUnavailableLabel, type LibraryFilter } from '@refer/capture/presentation';
 import type { Reference } from '@refer/capture';
 import { libraryTemplate } from './template';
 import { mountMasonry } from './masonry';
+import { mountLibraryMotion } from './motion';
 export { libraryTemplate } from './template';
 import type { LibraryAdapter, LibraryRequest as ExtensionMessage, LibraryResponse as ExtensionResponse, LibraryAccount as CloudState } from './types';
 
@@ -10,6 +11,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   root.classList.add('glance-library');
   root.removeAttribute('data-brand-motion');
   root.innerHTML = libraryTemplate;
+  const motion = mountLibraryMotion(root);
   const controller = new AbortController();
   const { signal } = controller;
   const brand = root.querySelector<HTMLAnchorElement>('.brand')!;
@@ -17,6 +19,9 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   type Filter = LibraryFilter;
   type UnknownRecord = Record<string, unknown>;
 
+  const loadingState = requiredElement<HTMLDivElement>('library-loading');
+  let loadingVisible = false;
+  const decodedImages = new Set<string>();
   const grid = requiredElement<HTMLDivElement>('reference-grid');
   const masonry = mountMasonry(grid);
   const emptyState = requiredElement<HTMLDivElement>('empty-state');
@@ -44,7 +49,6 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   const signInForm = requiredElement<HTMLFormElement>('sign-in-form');
   const signInButton = requiredElement<HTMLButtonElement>('sign-in-button');
   const signedInPanel = requiredElement<HTMLDivElement>('signed-in-panel');
-  const signedInEmail = requiredElement<HTMLParagraphElement>('signed-in-email');
   const syncDetail = requiredElement<HTMLParagraphElement>('sync-detail');
   const syncNowButton = requiredElement<HTMLButtonElement>('sync-now');
   const signOutButton = requiredElement<HTMLButtonElement>('sign-out');
@@ -84,9 +88,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     history[replace ? 'replaceState' : 'pushState'](state, '', url);
   }
   function animateEntry(element: HTMLElement, animate: boolean): void {
-    if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    element.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }],
-      { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+    motion.enter(element, animate);
   }
 
   function requiredElement<T extends HTMLElement>(id: string): T {
@@ -153,7 +155,6 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     accountButtonLabel.textContent = state.email ?? 'Account';
     accountCopy.textContent = 'Your references are saved to your account and available in both libraries. An internet connection is required.';
     signedInPanel.hidden = false;
-    signedInEmail.textContent = state.email ?? 'Signed in';
     accountCopy.hidden = true;
     importButton.hidden = state.legacyCount === 0;
     importButton.textContent = `Import ${state.legacyCount} older saves`;
@@ -275,7 +276,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
 
   function screenshot(reference: Reference): string | undefined {
     const result = stringValue(reference, [['screenshotDataUrl'], ['screenshot', 'dataUrl']]);
-    return /^data:image\/(?:png|webp|jpeg|gif);base64,/i.test(result) ? result : undefined;
+    return /^data:image\/(?:png|webp|jpeg|gif);base64,/i.test(result) ? result : adapter.imageUrl?.(reference);
   }
 
   function captureDate(reference: Reference): string {
@@ -314,7 +315,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     return svg;
   }
 
-  function createCard(reference: Reference): HTMLElement {
+  function createCard(reference: Reference, index: number): HTMLElement {
     const card = document.createElement('article');
     card.className = 'reference-card';
 
@@ -343,15 +344,42 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     card.style.setProperty('--specimen-bg', background.startsWith('rgb') ? background : '#fcfbf8');
     if (imageUrl) {
       const image = document.createElement('img');
-      image.src = imageUrl;
       if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
         image.width = width;
         image.height = height;
       }
       image.alt = `Captured ${elementLabel(reference)} on ${sourceHost(reference)}`;
-      image.loading = 'lazy';
+      image.loading = index < 4 ? 'eager' : 'lazy';
+      if (index === 0) image.fetchPriority = 'high';
       image.decoding = 'async';
+      const shouldReveal = !decodedImages.has(imageUrl);
+      if (shouldReveal) media.classList.add('is-image-loading');
+      media.style.aspectRatio = Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 ? `${width} / ${height}` : '4 / 3';
+      media.setAttribute('aria-busy', 'true');
+      let settled = false;
+      const finish = async () => {
+        try { await image.decode(); } catch { /* Show the fallback for unavailable images. */ }
+        if (settled || signal.aborted || !root.contains(media)) return;
+        settled = true;
+        media.classList.remove('is-image-loading');
+        media.removeAttribute('aria-busy');
+        if (image.naturalWidth) {
+          media.style.removeProperty('aspect-ratio');
+          decodedImages.add(imageUrl);
+          if (shouldReveal) motion.imageReady(image);
+        } else {
+          const unavailable = document.createElement('span');
+          unavailable.className = 'card-image-unavailable';
+          unavailable.textContent = libraryImageUnavailableLabel;
+          image.replaceWith(unavailable);
+        }
+        masonry.refresh();
+      };
+      image.addEventListener('load', finish, { once: true });
+      image.addEventListener('error', finish, { once: true });
+      image.src = imageUrl;
       media.append(image);
+      queueMicrotask(() => { if (image.complete) void finish(); });
     } else {
       const specimen = document.createElement('span');
       specimen.className = 'card-specimen';
@@ -368,7 +396,10 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     title.textContent = fontFamily(reference);
 
     body.append(title);
-    openButton.append(media, body);
+    const blur = document.createElement('span');
+    blur.className = 'card-blur';
+    blur.setAttribute('aria-hidden', 'true');
+    openButton.append(media, blur, body);
     card.append(openButton);
     const source = safeSourceUrl(reference);
     if (source) {
@@ -385,8 +416,20 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     return card;
   }
 
+  function showLoading(visible: boolean): void {
+    loadingVisible = visible;
+    loadingState.hidden = !visible;
+    motion.loading(visible);
+    if (visible) {
+      grid.hidden = true;
+      emptyState.hidden = true;
+      summary.textContent = '';
+    }
+  }
+
   function render(): void {
-    if (signal.aborted) return;
+    if (signal.aborted || (loadingVisible && !hasLoadedLibrary)) return;
+    showLoading(false);
     if (viewState && hasLoadedLibrary && cloudState?.authStatus === 'signed-in') {
       viewState.account = cloudState;
       viewState.references = references;
@@ -397,6 +440,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     window.history.replaceState(window.history.state, '', url);
     const visible = visibleReferences();
     grid.replaceChildren(...visible.map(createCard));
+    motion.refresh();
     grid.setAttribute('aria-busy', 'false');
 
     const filtering = Boolean(search.value.trim()) || activeFilter !== 'all';
@@ -676,6 +720,8 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     galleryPage.hidden = true;
     detailPage.hidden = false;
     root.classList.add('is-detail');
+    motion.brand(animateBrand);
+    motion.refresh();
     root.querySelector('.skip-link')?.setAttribute('href', '#detail-title');
     requiredElement('detail-feedback').textContent = '';
     document.title = elementLabel(reference) + ' · Glance';
@@ -695,6 +741,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     galleryPage.hidden = false;
     masonry.refresh();
     root.classList.remove('is-detail');
+    motion.brand(wasOpen && !signal.aborted);
     root.querySelector('.skip-link')?.setAttribute('href', '#main-content');
     document.title = originalTitle;
     const card = [...grid.querySelectorAll<HTMLElement>('[data-reference-id]')].find(item => item.dataset.referenceId === id);
@@ -849,11 +896,13 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && accountDialog.open) { event.preventDefault(); accountDialog.close(); }
   }, { signal });
-  accountButton.addEventListener('click', () => {
+  accountButton.addEventListener('click', (event) => {
     if (accountDialog.open) { accountDialog.close(); return; }
     accountButton.setAttribute('aria-expanded', 'true');
     accountFeedback.textContent = '';
+    accountDialog.dataset.keyboard = String(event.detail === 0);
     accountDialog.show();
+    if (event.detail !== 0) accountDialog.focus({ preventScroll: true });
     positionAccountMenu();
     void cloudRequest({ type: 'get-cloud-state' }).catch((error) => {
       accountFeedback.textContent = error instanceof Error ? error.message : 'Unable to read cloud status.';
@@ -914,19 +963,43 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
     loadGeneration++;
     if (!preserveView) forgetView();
     references = [];
+    decodedImages.clear();
     selectedReference = undefined;
     pendingDeletion = undefined;
     closeDetails(false);
     confirmDialog.close();
     hideToast();
     grid.replaceChildren();
+    showLoading(false);
     grid.setAttribute('aria-busy', 'false');
+  }
+
+  async function prepareImages(items: Reference[], generation: number): Promise<void> {
+    // Embedded extension images are already downloaded. Remote web images must
+    // load in their cards, so off-screen captures cannot hold up the whole page.
+    const urls = [...new Set(items.map(screenshot).filter((url): url is string => Boolean(url?.startsWith('data:'))))];
+    let next = 0;
+    const current = () => !signal.aborted && generation === loadGeneration;
+    await Promise.all(Array.from({ length: Math.min(4, urls.length) }, async () => {
+      while (current() && next < urls.length) {
+        const url = urls[next++]!;
+        if (decodedImages.has(url)) continue;
+        const image = new Image();
+        image.decoding = 'async';
+        image.src = url;
+        try {
+          await image.decode();
+          if (current() && image.naturalWidth) decodedImages.add(url);
+        } catch { /* A broken capture gets the existing fallback, without blocking the gallery. */ }
+      }
+    }));
   }
 
   async function loadLibrary(): Promise<void> {
     if (signal.aborted) return;
     const generation = ++loadGeneration;
     let resetOnError = false;
+    showLoading(!hasLoadedLibrary);
     grid.setAttribute('aria-busy', 'true');
     try {
       const stateResponse = await sendExtensionMessage({ type: 'get-cloud-state' });
@@ -939,9 +1012,11 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
       const next = stateResponse.cloudState!;
       if (cloudState?.userId !== next.userId) {
         forgetView();
+        decodedImages.clear();
         references = []; selectedReference = undefined; pendingDeletion = undefined;
         closeDetails(false); confirmDialog.close(); hideToast();
         grid.replaceChildren();
+        showLoading(true);
       }
       cloudState = next;
       renderCloudState();
@@ -957,9 +1032,14 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
         resetOnError = true;
         throw new Error('Your account changed. Refresh the library.');
       }
-      references = response.references ?? [];
+      const initialLoad = !hasLoadedLibrary;
+      const nextReferences = response.references ?? [];
+      if (initialLoad) await prepareImages(nextReferences, generation);
+      if (signal.aborted || generation !== loadGeneration) return;
+      references = nextReferences;
       hasLoadedLibrary = true;
       render();
+      if (initialLoad && !grid.hidden) motion.galleryReady(grid);
       requiredElement('detail-feedback').textContent = '';
       const initialId = selectionId() ?? (!openedInitial ? adapter.initialReferenceId : undefined);
       if (initialId && (!openedInitial || detailPage.hidden)) {
@@ -1032,6 +1112,7 @@ export function mountLibrary(root: HTMLElement, adapter: LibraryAdapter): () => 
   refresh();
   return () => {
     controller.abort();
+    motion.dispose();
     masonry.destroy();
     window.clearInterval(interval);
     unsubscribe?.();
