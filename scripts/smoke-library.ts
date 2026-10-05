@@ -268,7 +268,7 @@ try {
       await page.waitForFunction(before => window.scrollY > before, scrollBefore);
       assert.equal(await panel.evaluate(el => el.scrollTop), 0, 'Details must scroll with the page, not independently');
       await page.evaluate(() => window.scrollTo(0, 0));
-      assert(await page.getByRole('tabpanel').getByRole('heading', { name: 'Context', exact: true }).isVisible());
+      assert.equal(await page.getByRole('tabpanel').getByRole('heading', { name: 'Context', exact: true }).count(), 0);
       await page.getByRole('tab', { name: 'Layout' }).press('ArrowLeft');
       assert.equal(await page.getByRole('tab', { name: 'Inspect', exact: true }).getAttribute('aria-selected'), 'true');
       assert(await page.getByRole('tabpanel').getByRole('heading', { name: 'Typography', exact: true }).isVisible());
