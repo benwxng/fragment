@@ -89,28 +89,26 @@ export const inspectorStyles = String.raw`
     inset-block-start: max(12px, env(safe-area-inset-top));
     inset-inline-start: 50%;
     display: flex;
-    min-height: 36px;
+    min-height: 44px;
     align-items: center;
-    gap: 6px;
-    padding: 4px 4px 4px 12px;
-    border-radius: 14px;
+    gap: 8px;
+    padding: 5px 5px 5px 14px;
+    border-radius: 17px;
     transform: translateX(-50%);
     pointer-events: auto;
     white-space: nowrap;
   }
 
-  .status-dot {
-    inline-size: 7px;
-    block-size: 7px;
-    flex: 0 0 auto;
-    border-radius: 50%;
-    background: var(--refer-accent);
-    box-shadow: 0 0 0 3px rgba(166, 244, 197, 0.12);
-  }
+  .toolbar-eye { display: block; width: 38px; height: 20px; flex: 0 0 auto; pointer-events: none; }
+  .toolbar-eye svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .toolbar-eye-lid { transform-origin: 50px 21px; }
+  .toolbar-eye-pupil { transform: translate(0px, 0px); }
+  .toolbar-eye-asterisk { transform-box: fill-box; transform-origin: center; transform: rotate(0deg); }
+  .chip button { min-block-size: 34px; padding-inline: 12px; font-size: 13px; border-radius: 12px; }
 
   .chip-label {
     margin-inline: 2px 4px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: 0.01em;
   }
@@ -264,7 +262,7 @@ export const inspectorStyles = String.raw`
     position: fixed;
     z-index: 4;
     inset-inline-start: 50%;
-    inset-block-start: max(64px, calc(env(safe-area-inset-top) + 52px));
+    inset-block-start: max(72px, calc(env(safe-area-inset-top) + 60px));
     display: flex;
     min-block-size: 44px;
     max-inline-size: calc(100vw - 24px);
@@ -343,6 +341,21 @@ export const inspectorStyles = String.raw`
   }
 
   @media (prefers-reduced-motion: no-preference) {
+    .toolbar-eye-pupil { transition: transform 160ms cubic-bezier(0.2, 0, 0, 1); }
+    .toolbar-eye-asterisk { transition: transform 280ms cubic-bezier(0.23, 1, 0.32, 1); }
+
+    .chip {
+      opacity: 1;
+      transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease;
+    }
+
+    @starting-style {
+      .chip {
+        opacity: 0;
+        transform: translate(-50%, -12px);
+      }
+    }
+
     .toast {
       opacity: 1;
       transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
@@ -423,6 +436,13 @@ export const inspectorStyles = String.raw`
     .swatch {
       outline-color: CanvasText;
     }
+  }
+
+  @media (max-width: 420px) {
+    .chip { gap: 4px; padding-inline-start: 8px; max-width: calc(100vw - 16px); }
+    .toolbar-eye { width: 28px; }
+    .chip-label { font-size: 12px; }
+    .chip button { padding-inline: 8px; font-size: 12px; }
   }
 
   @media (max-width: 360px) {

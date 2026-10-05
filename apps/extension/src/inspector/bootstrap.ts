@@ -4,6 +4,7 @@ import type { ExtensionMessage, ExtensionResponse } from '../messages';
 import { captureElementImage, type ScreenshotCrop, waitForOverlayToDisappear } from './screenshot';
 import { inspectorStyles } from './styles';
 import { createSaveFeedback } from './save-feedback';
+import { createToolbarEye } from './toolbar-eye';
 
 const HOST_ID = '__refer_design_inspector__';
 const TOGGLE_EVENT = 'refer:toggle-inspector';
@@ -19,6 +20,7 @@ interface HudElements {
   highlightFill: HTMLDivElement;
   highlightEdges: HTMLDivElement[];
   chip: HTMLDivElement;
+  eye: ReturnType<typeof createToolbarEye>;
   hud: HTMLElement;
   fontPreview: HTMLDivElement;
   sections: HTMLDivElement;
@@ -95,15 +97,14 @@ function createUi(shadow: ShadowRoot): HudElements {
   highlight.append(highlightFill, ...highlightEdges);
 
   const chip = element('div', 'chip');
-  const statusDot = element('span', 'status-dot');
-  statusDot.setAttribute('aria-hidden', 'true');
+  const eye = createToolbarEye();
   const chipLabel = element('span', 'chip-label');
   chipLabel.textContent = 'Click to inspect';
   const libraryButton = createButton('library', 'View references');
   const exitButton = createButton('exit', 'Exit');
   exitButton.setAttribute('aria-label', 'Exit inspector');
   exitButton.setAttribute('aria-keyshortcuts', 'Escape');
-  chip.append(statusDot, chipLabel, libraryButton, exitButton);
+  chip.append(eye.element, chipLabel, libraryButton, exitButton);
 
   const hud = element('section', 'hud');
   hud.hidden = true;
@@ -160,6 +161,7 @@ function createUi(shadow: ShadowRoot): HudElements {
     highlightFill,
     highlightEdges,
     chip,
+    eye,
     hud,
     fontPreview,
     sections,
@@ -618,6 +620,7 @@ export function bootstrapInspector(): void {
     active = false;
     panelAnimation?.cancel();
     saveFeedback.dispose();
+    ui.eye.dispose();
     if (frame) cancelAnimationFrame(frame);
     if (geometryFrame) cancelAnimationFrame(geometryFrame);
     for (const dispose of cleanups.splice(0)) dispose();
@@ -634,7 +637,9 @@ export function bootstrapInspector(): void {
   }
 
   const handlePointerMove: EventListener = (event) => {
-    if (!(event instanceof PointerEvent) || isOverlayEvent(event)) return;
+    if (!(event instanceof PointerEvent)) return;
+    ui.eye.track(event.clientX, event.clientY);
+    if (isOverlayEvent(event)) return;
     pendingPoint = { x: event.clientX, y: event.clientY };
     if (!frame) frame = requestAnimationFrame(selectAtPointer);
   };
@@ -650,6 +655,7 @@ export function bootstrapInspector(): void {
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.button !== 0 || saving) return;
+    ui.eye.click();
     if (expanded) {
       if (target?.isConnected) void saveTarget(target);
       else setTarget(null);

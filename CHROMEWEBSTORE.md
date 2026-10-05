@@ -41,6 +41,10 @@ Privacy policy URL, publisher contact, support URL, distribution regions, and fi
 
 ## Version history
 
+The enlarged inspector toolbar uses the Glance eye logo. Its pupil follows the pointer; clicking a page element triggers a blink and a 90-degree asterisk turn. Decorative motion respects reduced-motion preferences (2026-10-04, draft).
+
+The inspector toolbar fades and slides down into place on activation with the same easing as the panel; reduced-motion activation remains instant (2026-10-04, draft).
+
 Inspector save confirmations appear below the top toolbar and slide down into place, respecting reduced motion (2026-10-04, draft).
 
 Inspector panel opening uses the library search expansion easing with a 280ms reveal; keyboard and reduced-motion opening remain instant (2026-10-04, draft).
