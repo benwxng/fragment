@@ -2,8 +2,7 @@
 
 A cross-browser inspector and visual reference library for studying typography,
 components, color, and layout decisions on the web. Anyone can create an account;
-each user's curation stays private to that account. Glance also works locally before
-an account is connected.
+each user's curation stays private to that account. Inspection works without signing in; saving and browsing your library require an account.
 
 The product and technical plan is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -16,7 +15,7 @@ The end-to-end product is working:
 - hover shows just the font name; click or Enter locks the element and opens its design properties;
 - click or Enter again signs in if needed, then saves a cropped reference directly to the account;
 - the built-in library supports search, facet filters, detail view, source links,
-  deletion, and undo.
+  deletion, and undo;
 - saved references live in Neon Postgres and private object storage with per-user RLS;
 - the authenticated web library is deployed at
   [refer-design-library.vercel.app](https://refer-design-library.vercel.app).
@@ -107,7 +106,15 @@ writer. The small web and extension adapters handle authentication, platform URL
 and their transport to the account API. The shared renderer owns detail navigation:
 `/library/:id` on the web and `library.html?reference=:id` in the extension, including
 direct links, previous/next, and browser Back/Forward. Detail pages use a responsive
-image-and-information grid, with reduced-motion support.
+image-and-information grid. Gallery and preview images preserve their proportions;
+tall previews fit within the viewport instead of stretching to fill the column.
+
+Preview details are grouped into **Inspect** (typography and colors), **Layout**,
+and **Notes** when a note exists. Internal capture metadata is omitted from the
+preview. The compact account menu offers full-width **Refresh library** and
+**Sign out** actions with icons on the right, plus **Import older saves** when
+applicable. Its entrance and exit animate from the avatar, with reduced-motion
+support.
 
 Make library UI changes in those shared files. Localhost updates automatically;
 rebuild the extension and reload it at `chrome://extensions` to see the same update
@@ -133,7 +140,7 @@ OAuth configuration.
 
 Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide the
 public `WXT_NEON_API_URL` and `WXT_SITE_URL`. Rebuild the extension, open its account
-menu, and choose **Sign in or create account**. Sign in on the website and approve the extension.
+menu, and choose **Sign in** when prompted. Sign in on the website and approve the extension.
 
 When developing with `pnpm dev:web --port 3001`, run `pnpm --filter @refer/extension build:local`
 to connect the unpacked Chrome extension through `http://localhost:3001`. This keeps
@@ -160,9 +167,18 @@ object-storage, and cookie secrets stay on the server.
 
 ## Standalone web library
 
-Run `pnpm dev:web` and open `http://localhost:3000`. The demo library works without
-an account. Live data needs the four values in `apps/web/.env.example`: Neon Auth
-URL, a server-only cookie secret, API URL, and the canonical website URL.
+Run `pnpm dev:web` and open `http://localhost:3000`. To use another port, run
+`pnpm dev:web --port 3001` and open `http://localhost:3001/login`. This also lets
+you preview the app on networks that block the hosted Vercel domain.
+
+Signed-out users are taken to the sign-in page, with the form on the left and the
+animated eye on the right. Continue with Google, or use email and password; the
+inline **sign up** action switches the form to account creation.
+
+Live data needs the four values in `apps/web/.env.example`: Neon Auth URL, a
+server-only cookie secret, API URL, and the canonical website URL. When Neon is
+not configured, `/library?demo=1` provides a demo library without an account;
+other library requests show the configuration screen.
 
 Existing Supabase passwords and sessions do not transfer. Sign in with Google using
 the same verified email, or create and verify a Neon email/password account with that

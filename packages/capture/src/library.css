@@ -835,6 +835,7 @@ dialog::backdrop {
 .account-dialog .account-close { display: none; }
 .account-dialog .dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: .125rem; margin: 0; }
 .account-dialog .dialog-actions .button { width: 100%; min-height: 44px; padding: .75rem; justify-content: flex-start; text-align: left; background: transparent; border: 0; border-radius: 8px; font-size: .875rem; font-weight: 500; box-shadow: none; }
+.account-dialog .dialog-actions .button svg { margin-inline-start: auto; flex-shrink: 0; }
 @media (hover: hover) and (pointer: fine) {
   .account-dialog .dialog-actions .button:hover { background: #182a1e08; }
   .account-dialog #sign-out:hover { background: #a33c320a; }
