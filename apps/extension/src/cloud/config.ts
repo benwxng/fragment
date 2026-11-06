@@ -1,3 +1,5 @@
+import defaults from '../../cloud-defaults.json';
+
 export interface CloudConfig { apiUrl: string; siteUrl: string }
 function configuredUrl(value: string | undefined): string | null {
   if (!value?.trim()) return null;
@@ -9,7 +11,7 @@ function configuredUrl(value: string | undefined): string | null {
   } catch { return null; }
 }
 export function getCloudConfig(): CloudConfig | null {
-  const apiUrl = configuredUrl(import.meta.env.WXT_NEON_API_URL);
-  const siteUrl = configuredUrl(import.meta.env.WXT_SITE_URL);
+  const apiUrl = configuredUrl(import.meta.env.WXT_NEON_API_URL ?? defaults.WXT_NEON_API_URL);
+  const siteUrl = configuredUrl(import.meta.env.WXT_SITE_URL ?? defaults.WXT_SITE_URL);
   return apiUrl && siteUrl ? { apiUrl, siteUrl } : null;
 }

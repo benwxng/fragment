@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import defaults from './cloud-defaults.json';
 import { fileURLToPath } from 'node:url';
 
 const monorepoRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -25,6 +26,7 @@ export default defineConfig({
       'apps/extension/package.json',
       'apps/extension/tsconfig.json',
       'apps/extension/wxt.config.ts',
+      'apps/extension/cloud-defaults.json',
       'packages/capture/package.json',
       'packages/capture/src/**',
       'packages/capture/tsconfig.json',
@@ -34,7 +36,7 @@ export default defineConfig({
     ],
   },
   manifest: ({ browser }) => {
-    const cloudOrigins = [import.meta.env.WXT_NEON_API_URL, import.meta.env.WXT_SITE_URL]
+    const cloudOrigins = [import.meta.env.WXT_NEON_API_URL ?? defaults.WXT_NEON_API_URL, import.meta.env.WXT_SITE_URL ?? defaults.WXT_SITE_URL]
       .flatMap(value => {
         try {
           const url = new URL(value?.trim() ?? '');

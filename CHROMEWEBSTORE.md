@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Glance
 
-Last updated: 2026-10-05
+Last updated: 2026-11-06
 
 ## Store listing
 
@@ -155,3 +155,7 @@ Saving uploads selected references and screenshot crops to the account service; 
 
 [Chrome privacy disclosures](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy), [privacy policy requirements](https://developer.chrome.com/docs/webstore/program-policies/privacy), and [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use).
 | 0.1.0 | 2026-10-02 | Add a thin gray search border, quick expansion, and gradual background fading while search is focused on both libraries; refresh library screenshots. | Draft |
+
+### 2026-11-06 — Account saving fix
+
+Standard builds now include account connectivity so users can sign in and save references without additional setup.

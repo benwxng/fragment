@@ -41,11 +41,12 @@ async function releaseConfiguration() {
   try {
     source = await readFile(join(extensionRoot, '.env.local'), 'utf8');
   } catch (error) {
-    if (error && typeof error === 'object' && error.code === 'ENOENT') return null;
-    throw error;
+    if (!error || typeof error !== 'object' || error.code !== 'ENOENT') throw error;
   }
 
-  const values = parseEnvironment(source);
+  const values = source === undefined
+    ? JSON.parse(await readFile(join(extensionRoot, 'cloud-defaults.json'), 'utf8'))
+    : parseEnvironment(source);
   assert.deepEqual(
     Object.keys(values).sort(),
     ['WXT_NEON_API_URL', 'WXT_SITE_URL'],
@@ -54,7 +55,7 @@ async function releaseConfiguration() {
   const url = new URL(values.WXT_NEON_API_URL);
   assert.equal(url.protocol, 'https:', 'Release Neon API URL must use HTTPS');
   assert.equal(new URL(values.WXT_SITE_URL).protocol, 'https:', 'Release website must use HTTPS');
-  assert(!/service[_-]?role|secret/i.test(source), 'Secret/service-role material must not be packaged');
+  assert(!/service[_-]?role|secret/i.test(JSON.stringify(values)), 'Secret/service-role material must not be packaged');
   return { source, origins: [url.origin, new URL(values.WXT_SITE_URL).origin], values };
 }
 
@@ -87,7 +88,7 @@ function manifestFrom(files, label) {
 
 function assertCommonManifest(manifest, label, configuration) {
   assert.equal(manifest.manifest_version, 3, `${label}: expected Manifest V3`);
-  assert.equal(manifest.name, 'Refer — Design Inspector');
+  assert.equal(manifest.name, 'Glance — Design Inspector');
   assert.equal(manifest.version, version);
   assert(manifest.description.length <= 132, `${label}: description exceeds store limit`);
   assert(manifest.icons?.['128'], `${label}: missing 128px store icon`);
@@ -146,6 +147,7 @@ function assertSourceArchive(files, configuration) {
     'tsconfig.base.json',
     'apps/extension/package.json',
     'apps/extension/wxt.config.ts',
+    'apps/extension/cloud-defaults.json',
     'apps/extension/entrypoints/background.ts',
     'packages/capture/package.json',
     'packages/capture/src/index.ts',
@@ -160,7 +162,7 @@ function assertSourceArchive(files, configuration) {
       || (configuration && name === 'apps/extension/.env.local');
     assert(!/(^|\/)\.env(?:\.|$)/u.test(name) || allowedEnvironment, `Firefox sources: environment file leaked: ${name}`);
   }
-  if (configuration) {
+  if (configuration?.source !== undefined) {
     assert(files['apps/extension/.env.local'], 'Firefox sources: missing public release configuration');
     assert.equal(strFromU8(files['apps/extension/.env.local']), configuration.source);
   }
@@ -201,7 +203,7 @@ async function main() {
   assertSourceArchive(sourceFiles, configuration);
 
   process.stdout.write([
-    'Refer distribution packages verified.',
+    'Glance distribution packages verified.',
     `  Chrome/Arc: ${chromeArchive}`,
     `  Firefox: ${firefoxArchive}`,
     `  Firefox reviewer sources: ${sourcesArchive}`,

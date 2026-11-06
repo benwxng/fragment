@@ -21,8 +21,8 @@ The end-to-end product is working:
   [refer-design-library.vercel.app](https://refer-design-library.vercel.app).
 
 Inspection is available without an account. Saving and browsing saved references
-require sign-in and an internet connection. Without account configuration, a build
-can inspect pages but cannot save references.
+require sign-in and an internet connection. Normal builds include the public production account URLs. Local environment
+overrides can point a build at another backend or sign-in website.
 
 ## Run it locally
 
@@ -138,7 +138,9 @@ The schema, existing library, and screenshots have been migrated. See
 [Neon setup](docs/NEON_SETUP.md) for deployment, verification, and remaining Google
 OAuth configuration.
 
-Copy `apps/extension/.env.example` to `apps/extension/.env.local` and provide the
+Production builds work without a local environment file: the public URLs are
+checked in at `apps/extension/cloud-defaults.json`. To override them, copy
+`apps/extension/.env.example` to `apps/extension/.env.local` and provide the
 public `WXT_NEON_API_URL` and `WXT_SITE_URL`. Rebuild the extension, open its account
 menu, and choose **Sign in** when prompted. Sign in on the website and approve the extension.
 
