@@ -4,7 +4,7 @@
 
 - Project: `young-wildflower-24750720` (`glance`), AWS us-east-2.
 - Production branch: `br-fragrant-rice-b4xkrp05`.
-- Web: https://refer-design-library.vercel.app
+- Web: https://www.glance.works (`https://glance.works` redirects here)
 - API: https://br-fragrant-rice-b4xkrp05-api.compute.c-6.us-east-2.aws.neon.tech/
 - `neon.ts` deploys managed Auth, private `uploads` storage, and `backend/api.ts`.
 - AI Gateway is disabled.
@@ -40,8 +40,8 @@ authorized redirect URI is:
 https://ep-sparkling-water-b4psw1bw.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth/callback/google
 ```
 
-The application callback origin is `https://refer-design-library.vercel.app`, which
-is already trusted in Neon Auth. Add the Google client ID and secret to the Google
+The application callback origin is `https://www.glance.works`. Both
+`https://www.glance.works` and `https://glance.works` are trusted in Neon Auth. Add the Google client ID and secret to the Google
 provider in the production branch's Neon Auth settings. To have the agent finish
 this step, place `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the ignored root
 `.env.local`; never put the secret in extension configuration.
@@ -75,7 +75,8 @@ pnpm package:extensions
 checksummed migration history. Reruns skip already-applied migrations. Add a new
 numbered SQL file for subsequent changes; never edit an applied migration.
 
-Vercel project `refer-design-library` uses root directory `apps/web`. Its production
+Vercel project `fragment` serves `glance.works` and uses root directory `apps/web`.
+The older `refer-design-library` project is a separate legacy deployment. Its production
 environment points at the production Neon branch. Deploy from the repository root
 with `pnpx vercel@latest deploy --prod`. Extension releases must be rebuilt and
 reloaded/installed separately; existing installed Supabase builds do not update
@@ -149,3 +150,11 @@ VERIFY_EXTENSION_SYNC=1 node --env-file=output/migration/test.env scripts/smoke-
 This adds fresh-device hydration, cached offline images, offline capture upload,
 second-device propagation, and remote deletion checks. It uses disposable accounts
 and restores the configured production extension build afterward.
+
+## Custom domain configuration (November 6, 2026)
+
+The `fragment` Vercel project now has production Neon Auth, API, cookie-secret,
+and canonical-site environment variables. Its `main` Git deployments publish to
+`www.glance.works`; the apex redirects there. The extension uses the same canonical
+website by default. Domain registration and authoritative DNS remain external to
+Vercel; no registrar transfer or nameserver changes were needed.

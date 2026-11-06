@@ -18,7 +18,7 @@ The end-to-end product is working:
   deletion, and undo;
 - saved references live in Neon Postgres and private object storage with per-user RLS;
 - the authenticated web library is deployed at
-  [refer-design-library.vercel.app](https://refer-design-library.vercel.app).
+  [www.glance.works](https://www.glance.works).
 
 Inspection is available without an account. Saving and browsing saved references
 require sign-in and an internet connection. Normal builds include the public production account URLs. Local environment

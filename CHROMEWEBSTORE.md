@@ -159,3 +159,7 @@ Saving uploads selected references and screenshot crops to the account service; 
 ### 2026-11-06 — Account saving fix
 
 Standard builds now include account connectivity so users can sign in and save references without additional setup.
+
+### 2026-11-06 — Glance domain
+
+Account sign-in now opens on www.glance.works. The website host permission follows this domain; the account API host is unchanged.
