@@ -163,3 +163,7 @@ Standard builds now include account connectivity so users can sign in and save r
 ### 2026-11-06 — Glance domain
 
 Account sign-in now opens on www.glance.works. The website host permission follows this domain; the account API host is unchanged.
+
+### 2026-11-06 — Library logo contrast
+
+The library eye logo now has a black outline so its white shape remains visible on light backgrounds. Refresh library screenshots for this outline.
