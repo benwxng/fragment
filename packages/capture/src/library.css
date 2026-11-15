@@ -13,6 +13,7 @@
   --text-tertiary: #72756d;
   --border: #deded7;
   --border-strong: #c9cac2;
+  --header-outline: #315b4826;
   --accent: #315b48;
   --accent-hover: #254936;
   --accent-soft: #e5ede8;
@@ -129,6 +130,10 @@ svg {
   width: 4rem;
   height: auto;
   object-fit: contain;
+}
+
+.brand-outline {
+  stroke: var(--header-outline);
 }
 
 .brand-asterisk {
@@ -824,7 +829,7 @@ dialog::backdrop {
 }
 
 /* Avatar trigger and non-modal account dropdown. */
-.library-header .account-button { width: 40px; height: 40px; min-height: 40px; padding: 0; flex: 0 0 40px; border: 1px solid #315b4826; border-radius: 50%; overflow: hidden; background: #fff; box-shadow: none; }
+.library-header .account-button { width: 40px; height: 40px; min-height: 40px; padding: 0; flex: 0 0 40px; border: 1px solid var(--header-outline); border-radius: 50%; overflow: hidden; background: #fff; box-shadow: none; }
 .account-avatar { display: block; width: 100%; height: 100%; object-fit: cover; }
 .account-dialog { position: fixed; inset: auto; width: min(240px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px #182a1e14; overflow-y: auto; }
 .account-dialog .account-shell { padding: .375rem; }
