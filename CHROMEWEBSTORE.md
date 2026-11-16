@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Glance
 
-Last updated: 2026-11-06
+Last updated: 2026-11-16
 
 ## Store listing
 
@@ -15,6 +15,8 @@ Glance helps you keep the details that catch your eye. Inspect a page's typograp
 Hover to see the font name. Click once to open the element's design details, then click again to save it. The selected element stays in place while you inspect it; Escape returns to browsing fonts.
 
 The library offers concise reference titles and filters for type, components, colors, and layout.
+
+Choose “View references” to open your library on glance.works.
 
 ## Graphics and assets
 
@@ -40,6 +42,8 @@ Saved references include source URLs, page titles, selected website content, des
 Privacy policy URL, publisher contact, support URL, distribution regions, and final store screenshots remain to be supplied before submission. No store submission was performed.
 
 ## Version history
+
+“View references” in the inspector and save confirmation, plus the library keyboard shortcut, now open the website library on glance.works (2026-11-16, draft).
 
 Web library loading now fetches authenticated metadata in one request, loads screenshots near the viewport, and privately caches immutable images per account for repeat visits. The shared renderer preserves progressive image reveals and delete/undo keeps screenshot bytes (2026-10-05, draft).
 

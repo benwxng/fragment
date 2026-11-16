@@ -1,5 +1,7 @@
 import type { ExtensionMessage, ExtensionResponse } from '../src/messages';
 import { CloudError } from '../src/cloud/client';
+import { getCloudConfig } from '../src/cloud/config';
+import defaults from '../cloud-defaults.json';
 import {
   getCloudState,
   deleteReference, saveReference, listReferences, importLegacyReferences,
@@ -44,7 +46,8 @@ async function toggleInspector(tab: Browser.tabs.Tab): Promise<void> {
 }
 
 async function openLibrary(): Promise<void> {
-  await browser.tabs.create({ url: browser.runtime.getURL('/library.html') });
+  const siteUrl = getCloudConfig()?.siteUrl ?? defaults.WXT_SITE_URL;
+  await browser.tabs.create({ url: new URL('/library', siteUrl).href });
 }
 
 async function getActiveTab(): Promise<Browser.tabs.Tab | undefined> {
